@@ -1,0 +1,15 @@
+Customer: Hello, good morning.
+Agent: Hi, this is Koyali. I was just going through your website and I came across one of your projects — Orchid Platinum. Can I get some details?
+Agent: Sure ma’am. This project is located on Whitefield Main Road, 500 meters from Nexus Mall and beside Anand Sweets.
+Customer: How far is it from Hope Farm?
+Agent: It’s approx 2 kilometers.
+Customer: Hope Farm is towards the left or right?
+Agent: It's on the right-hand side if you’re coming from Nexus Mall, towards Hope Farm.
+...
+
+Customer: So if 2 BHK is only on the ground floor, I wouldn’t be interested.
+Agent: Understood, ma’am. I can let you know about our other projects.
+Customer: No, I’m only looking in this location.
+
+Customer: You may send me the details on my email. I’ll review and get back to you.
+Agent: Sure ma’am.

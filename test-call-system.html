@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 3px; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>📞 Call System Test (Without ngrok)</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Call Trigger</h3>
+        <input type="text" id="agentNumber" placeholder="Agent Number (+91...)" value="+919014600977">
+        <input type="text" id="customerNumber" placeholder="Customer Number (+91...)" value="+919876543210">
+        <input type="text" id="leadId" placeholder="Lead ID" value="test123">
+        <br><br>
+        <button onclick="testCallTrigger()">🚀 Trigger Call</button>
+        <div id="callResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test Manual Status Update</h3>
+        <input type="text" id="statusLeadId" placeholder="Lead ID" value="test123">
+        <input type="text" id="callStatus" placeholder="Status (e.g., Connected)" value="Connected">
+        <input type="text" id="callNotes" placeholder="Notes (optional)" value="Test call completed">
+        <br><br>
+        <button onclick="testStatusUpdate()">📝 Update Status</button>
+        <div id="statusResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Server Status</h3>
+        <button onclick="checkServerStatus()">🔍 Check Server</button>
+        <div id="serverResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        async function testCallTrigger() {
+            const agent = document.getElementById('agentNumber').value;
+            const customer = document.getElementById('customerNumber').value;
+            const leadId = document.getElementById('leadId').value;
+            
+            const resultDiv = document.getElementById('callResult');
+            resultDiv.innerHTML = '🔄 Triggering call...';
+            
+            try {
+                const url = `${API_BASE}/trigger-call?agent=${encodeURIComponent(agent)}&customer=${encodeURIComponent(customer)}&leadId=${encodeURIComponent(leadId)}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <strong>✅ Success!</strong><br>
+                        Message: ${data.message}<br>
+                        Note: ${data.note || 'Call initiated'}<br>
+                        Response: ${JSON.stringify(data.mcubeResponse)}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<strong>❌ Failed:</strong> ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+            }
+        }
+
+        async function testStatusUpdate() {
+            const leadId = document.getElementById('statusLeadId').value;
+            const status = document.getElementById('callStatus').value;
+            const notes = document.getElementById('callNotes').value;
+            
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.innerHTML = '🔄 Updating status...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/update-call-status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        leadId,
+                        status,
+                        notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<strong>✅ Success!</strong><br>Message: ${data.message}`;
+                } else {
+                    resultDiv.innerHTML = `<strong>❌ Failed:</strong> ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>❌ Error:</strong> ${error.message}`;
+            }
+        }
+
+        async function checkServerStatus() {
+            const resultDiv = document.getElementById('serverResult');
+            resultDiv.innerHTML = '🔄 Checking server...';
+            
+            try {
+                const response = await fetch('http://localhost:5000/');
+                const text = await response.text();
+                resultDiv.innerHTML = `<strong>✅ Server Running!</strong><br>Response: ${text}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<strong>❌ Server Error:</strong> ${error.message}`;
+            }
+        }
+
+        // Auto-check server status on load
+        window.onload = checkServerStatus;
+    </script>
+</body>
+</html> 
