@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // Test the URL format from the web search
-const apiUrl = 'https://mcube.vmc.in/api/outboundcall?apikey=34b4391e00592dc6aa2a117bcd495e0f5&exenumber=9014600977&custnumber=8187802142';
+const apiUrl = 'https://mcube.vmc.in/api/outboundcall?apikey=029f2e0cebd3e3473f0b4cbbaebd1ed5&exenumber=9014600977&custnumber=8187802142';
 
 console.log('Testing MCUBE API with new format...');
 console.log('URL:', apiUrl);
