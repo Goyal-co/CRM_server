@@ -113,7 +113,9 @@ app.use(cors({
     'http://localhost:5173', // for local development
     'https://pratham-frontend-whah.onrender.com', // your Render frontend (if used)
     'https://crm-frontend-rudra-avulas-projects.vercel.app', // new Vercel frontend
-    'https://crm-frontend-virid-theta.vercel.app' // new Vercel frontend
+    'https://crm-frontend-virid-theta.vercel.app',
+    'https://crm-frontend-virid-theta.vercel.app/api/generate-pitch',
+    'https://crm-frontend-rudra-avulas-projects.vercel.app/api/generate-pitch' // new Vercel frontend
   ],
   credentials: true
 }));
