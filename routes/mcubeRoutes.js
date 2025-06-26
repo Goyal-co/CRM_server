@@ -39,8 +39,8 @@ router.get('/trigger-call', async (req, res) => {
   // Use the working MCUBE API format (without +91 prefix, without refid)
   const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=34b4391e00592dc6aa2a117bcd495e0f5&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}`;
 
-  // 🐞 Debug: Print full MCUBE API URL (mask API key for security)
-  console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl.replace(MCUBE_API_KEY, '****')}`);
+  // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
+  console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
   console.log(`[${new Date().toISOString()}] Call parameters:`, { agent, customer, leadId });
 
   try {
