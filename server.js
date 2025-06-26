@@ -109,9 +109,13 @@ app.use(express.urlencoded({ extended: false })); // Required for webhooks
 
 // Explicit CORS configuration
 app.use(cors({
-  origin: 'http://localhost:5173', // Frontend origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: [
+    'http://localhost:5173', // for local development
+    'https://pratham-frontend-whah.onrender.com', // your Render frontend (if used)
+    'https://crm-frontend-rudra-avulas-projects.vercel.app', // new Vercel frontend
+    'https://crm-frontend-virid-theta.vercel.app' // new Vercel frontend
+  ],
+  credentials: true
 }));
 
 // Request logging middleware
