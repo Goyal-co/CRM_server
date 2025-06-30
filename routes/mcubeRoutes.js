@@ -45,8 +45,8 @@ router.get('/trigger-call', async (req, res) => {
   const agentNumber = agent.replace('+91', '');
   const customerNumber = customer.replace('+91', '');
 
-  // Use the working MCUBE API format with Google Sheets callback URL
-  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=029f2e0cebd3e3473f0b4cbbaebd1ed5&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&refid=${encodeURIComponent(leadId)}&url=${encodeURIComponent(CALLBACK_URL)}`;
+  // Use the working MCUBE API format without callback URL
+  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=029f2e0cebd3e3473f0b4cbbaebd1ed5&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&refid=${encodeURIComponent(leadId)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
   console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
@@ -534,6 +534,138 @@ router.put('/recordings/:callId/analysis', async (req, res) => {
   } catch (err) {
     console.error(`[${new Date().toISOString()}] Error updating analysis:`, err);
     res.status(500).json({ error: 'Failed to update analysis results' });
+  }
+});
+
+// 8️⃣ Manual Download Recording from MCUBE
+router.post('/download-recording', async (req, res) => {
+  try {
+    const { callId, leadId, agent, customer } = req.body;
+    
+    if (!callId) {
+      return res.status(400).json({ error: 'Call ID is required' });
+    }
+
+    console.log(`[${new Date().toISOString()}] Manual download requested for callId: ${callId}`);
+
+    // Try to get recording URL from MCUBE (you might need to check MCUBE docs for this)
+    // For now, we'll construct a possible URL pattern
+    const possibleRecordingUrl = `https://mcube.vmctechnologies.com/sounds/${callId}.wav`;
+    
+    let firebaseRecordingUrl = null;
+    let firebaseFileId = null;
+
+    try {
+      console.log(`[${new Date().toISOString()}] Attempting to download from: ${possibleRecordingUrl}`);
+      
+      // Download the file from MCUBE
+      const response = await axios.get(possibleRecordingUrl, { 
+        responseType: 'arraybuffer',
+        timeout: 60000
+      });
+      
+      // Create a temporary file
+      const tempDir = path.join(__dirname, '../temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      const tempFilePath = path.join(tempDir, `${callId}.wav`);
+      fs.writeFileSync(tempFilePath, response.data);
+      
+      console.log(`[${new Date().toISOString()}] Downloaded to temp: ${tempFilePath}`);
+
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `call-recordings/${callId}.wav`);
+      const fileBuffer = fs.readFileSync(tempFilePath);
+      
+      console.log(`[${new Date().toISOString()}] Uploading to Firebase Storage...`);
+      const uploadResult = await uploadBytes(storageRef, fileBuffer, {
+        contentType: 'audio/wav'
+      });
+      
+      // Get the download URL
+      firebaseRecordingUrl = await getDownloadURL(uploadResult.ref);
+      firebaseFileId = uploadResult.ref.fullPath;
+      
+      console.log(`[${new Date().toISOString()}] Uploaded to Firebase: ${firebaseRecordingUrl}`);
+      
+      // Clean up temp file
+      fs.unlinkSync(tempFilePath);
+      
+    } catch (downloadErr) {
+      console.error(`[${new Date().toISOString()}] Error downloading recording:`, downloadErr);
+      return res.status(404).json({ 
+        error: 'Recording not found or not accessible',
+        details: downloadErr.message,
+        callId: callId
+      });
+    }
+
+    // Store call metadata in Firestore
+    try {
+      const callData = {
+        callId: callId,
+        executive: agent,
+        customer: customer,
+        startTime: new Date().toISOString(),
+        endTime: new Date().toISOString(),
+        status: 'Call complete',
+        callType: 'Outbound',
+        duration: 0,
+        answeredTime: 0,
+        mcubeRecordingUrl: possibleRecordingUrl,
+        firebaseRecordingUrl: firebaseRecordingUrl,
+        firebaseFileId: firebaseFileId,
+        refId: leadId,
+        createdAt: new Date(),
+        analysisStatus: 'pending',
+        analysisResults: null,
+        manuallyDownloaded: true
+      };
+      
+      const docRef = await addDoc(collection(db, 'call-logs'), callData);
+      console.log(`[${new Date().toISOString()}] Call data stored in Firestore with ID: ${docRef.id}`);
+      
+    } catch (firestoreErr) {
+      console.error(`[${new Date().toISOString()}] Error storing in Firestore:`, firestoreErr);
+    }
+
+    // Trigger AI analysis
+    if (firebaseRecordingUrl) {
+      try {
+        console.log(`[${new Date().toISOString()}] Triggering AI analysis with Firebase recording: ${firebaseRecordingUrl}`);
+        
+        await axios.post(`${process.env.CALL_ANALYSIS_API || 'http://localhost:5000/api/call-analysis'}`, {
+          leadId: leadId,
+          recordingUrl: firebaseRecordingUrl,
+          callId: callId,
+          source: 'mcube',
+          status: 'Call complete',
+          duration: 0,
+          firebaseFileId: firebaseFileId
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(`[${new Date().toISOString()}] AI analysis triggered successfully for callid: ${callId}`);
+      } catch (analysisError) {
+        console.error(`[${new Date().toISOString()}] Call analysis error:`, analysisError.message);
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Recording downloaded and uploaded to Firebase successfully',
+      firebaseUrl: firebaseRecordingUrl,
+      firebaseFileId: firebaseFileId
+    });
+
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] Manual download failed:`, err.message);
+    res.status(500).json({ error: 'Failed to download recording', details: err.message });
   }
 });
 
