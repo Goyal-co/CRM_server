@@ -583,52 +583,56 @@ router.post('/download-recording', async (req, res) => {
     
     let firebaseRecordingUrl = null;
     let firebaseFileId = null;
+    let downloadSuccess = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+    const waitTime = 10000; // 10 seconds
 
-    try {
-      console.log(`[${new Date().toISOString()}] Attempting to download from: ${possibleRecordingUrl}`);
-      
-      // Download the file from MCUBE
-      const response = await axios.get(possibleRecordingUrl, { 
-        responseType: 'arraybuffer',
-        timeout: 60000
-      });
-      
-      // Create a temporary file
-      const tempDir = path.join(__dirname, '../temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
+    while (!downloadSuccess && attempts < maxAttempts) {
+      try {
+        console.log(`[${new Date().toISOString()}] Attempt ${attempts + 1}: Downloading from: ${possibleRecordingUrl}`);
+        // Download the file from MCUBE
+        const response = await axios.get(possibleRecordingUrl, { 
+          responseType: 'arraybuffer',
+          timeout: 60000
+        });
+        // Create a temporary file
+        const tempDir = path.join(__dirname, '../temp');
+        if (!fs.existsSync(tempDir)) {
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        const tempFilePath = path.join(tempDir, `${callId}.wav`);
+        fs.writeFileSync(tempFilePath, response.data);
+        console.log(`[${new Date().toISOString()}] Downloaded to temp: ${tempFilePath}`);
+        // Upload to Firebase Storage
+        const storageRef = ref(storage, `call-recordings/${callId}.wav`);
+        const fileBuffer = fs.readFileSync(tempFilePath);
+        console.log(`[${new Date().toISOString()}] Uploading to Firebase Storage...`);
+        const uploadResult = await uploadBytes(storageRef, fileBuffer, {
+          contentType: 'audio/wav'
+        });
+        // Get the download URL
+        firebaseRecordingUrl = await getDownloadURL(uploadResult.ref);
+        firebaseFileId = uploadResult.ref.fullPath;
+        console.log(`[${new Date().toISOString()}] Uploaded to Firebase: ${firebaseRecordingUrl}`);
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+        downloadSuccess = true;
+        break;
+      } catch (downloadErr) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.log(`[${new Date().toISOString()}] Recording not available yet. Retrying in 10 seconds...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        } else {
+          console.error(`[${new Date().toISOString()}] Error downloading recording after ${maxAttempts} attempts:`, downloadErr);
+          return res.status(404).json({ 
+            error: 'Recording not found or not accessible after multiple attempts',
+            details: downloadErr.message,
+            callId: callId
+          });
+        }
       }
-      
-      const tempFilePath = path.join(tempDir, `${callId}.wav`);
-      fs.writeFileSync(tempFilePath, response.data);
-      
-      console.log(`[${new Date().toISOString()}] Downloaded to temp: ${tempFilePath}`);
-
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `call-recordings/${callId}.wav`);
-      const fileBuffer = fs.readFileSync(tempFilePath);
-      
-      console.log(`[${new Date().toISOString()}] Uploading to Firebase Storage...`);
-      const uploadResult = await uploadBytes(storageRef, fileBuffer, {
-        contentType: 'audio/wav'
-      });
-      
-      // Get the download URL
-      firebaseRecordingUrl = await getDownloadURL(uploadResult.ref);
-      firebaseFileId = uploadResult.ref.fullPath;
-      
-      console.log(`[${new Date().toISOString()}] Uploaded to Firebase: ${firebaseRecordingUrl}`);
-      
-      // Clean up temp file
-      fs.unlinkSync(tempFilePath);
-      
-    } catch (downloadErr) {
-      console.error(`[${new Date().toISOString()}] Error downloading recording:`, downloadErr);
-      return res.status(404).json({ 
-        error: 'Recording not found or not accessible',
-        details: downloadErr.message,
-        callId: callId
-      });
     }
 
     // Store call metadata in Firestore
