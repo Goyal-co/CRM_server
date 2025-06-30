@@ -45,8 +45,8 @@ router.get('/trigger-call', async (req, res) => {
   const agentNumber = agent.replace('+91', '');
   const customerNumber = customer.replace('+91', '');
 
-  // Use the working MCUBE API format without callback URL and without refid
-  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=029f2e0cebd3e3473f0b4cbbaebd1ed5&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}`;
+  // Use the working MCUBE API format with only apikey, exenumber, and custnumber (no callback URL)
+  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
   console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
@@ -78,35 +78,10 @@ router.get('/trigger-call', async (req, res) => {
     
     // Handle JSON response from MCUBE
     if (responseData && typeof responseData === 'object' && responseData.msg === 'success') {
-      // Automatically trigger recording download after successful call
-      const callId = responseData.callid;
-      if (callId) {
-        console.log(`[${new Date().toISOString()}] Auto-triggering recording download for callId: ${callId}`);
-        
-        // Trigger download in background (don't wait for it)
-        setTimeout(async () => {
-          try {
-            await axios.post(`${req.protocol}://${req.get('host')}/api/download-recording`, {
-              callId: callId,
-              leadId: leadId,
-              agent: agent,
-              customer: customer
-            }, {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-            console.log(`[${new Date().toISOString()}] Auto-download completed for callId: ${callId}`);
-          } catch (downloadError) {
-            console.error(`[${new Date().toISOString()}] Auto-download failed for callId: ${callId}:`, downloadError.message);
-          }
-        }, 5000); // Wait 5 seconds before attempting download
-      }
-      
       return res.json({ 
         success: true, 
         message: 'MCUBE call triggered successfully! Your phone should ring shortly.',
-        note: `Call ID: ${callId}. Recording will be automatically downloaded in 5 seconds.`,
+        note: `Call ID: ${responseData.callid}`,
         mcubeResponse: responseData,
         debug: {
           agent,
