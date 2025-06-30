@@ -29,6 +29,7 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "twilio": "^5.7.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "firebase": "^10.7.1"
   }
 }
