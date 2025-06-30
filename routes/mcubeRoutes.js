@@ -351,31 +351,7 @@ router.post('/update-call-status', async (req, res) => {
       console.error(`[${new Date().toISOString()}] Google Apps Script error:`, scriptError.message);
     }
 
-    // If status is 'Call complete' or 'answered', trigger recording download
-    if (
-      status &&
-      (
-        status.toLowerCase().includes('complete') ||
-        status.toLowerCase().includes('answered')
-      ) &&
-      callId
-    ) {
-      // Trigger download in background
-      setTimeout(async () => {
-        try {
-          await axios.post(`${req.protocol}://${req.get('host')}/api/download-recording`, {
-            callId,
-            agent,
-            customer
-          }, {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          console.log(`[${new Date().toISOString()}] Auto-download completed for callId: ${callId}`);
-        } catch (downloadError) {
-          console.error(`[${new Date().toISOString()}] Auto-download failed for callId: ${callId}:`, downloadError.message);
-        }
-      }, 5000); // Wait 5 seconds before attempting download
-    }
+    // Removed auto-download logic. Recording download must be triggered manually.
 
     res.json({ success: true, message: 'Call status updated manually' });
   } catch (err) {
