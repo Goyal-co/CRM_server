@@ -45,8 +45,9 @@ router.get('/trigger-call', async (req, res) => {
   const agentNumber = agent.replace('+91', '');
   const customerNumber = customer.replace('+91', '');
 
-  // Use the working MCUBE API format with only apikey, exenumber, and custnumber (no callback URL)
-  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}`;
+  // Use MCUBE API with Google Apps Script as callback URL
+  const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbyWzCFNuv-8Ugr-pzD4VJ08-QJ20RxvENe1bocm2Ya_2A02lrxH_WvmWddKqB_P8Ccm/exec';
+  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&callbackurl=${encodeURIComponent(googleScriptUrl)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
   console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
@@ -337,13 +338,14 @@ router.post('/update-call-status', async (req, res) => {
       customer
     });
 
-    // Update lead via Google Apps Script
+    // Update lead via Google Apps Script with recording placeholder
     try {
       const params = new URLSearchParams({
-        action: 'updateLead',
+        action: 'updateLeadWithRecording',
         leadId: leadId,
-        called: 'Yes',
-        feedback1: `Status: ${status} | Notes: ${notes || 'Manual update'}`
+        recordingUrl: '', // No recording URL for manual updates
+        status: status,
+        callId: callId || 'Manual'
       });
       await axios.get(GOOGLE_SCRIPT_URL, { params });
       console.log(`[${new Date().toISOString()}] Lead updated for refid: ${leadId}`);
@@ -351,7 +353,18 @@ router.post('/update-call-status', async (req, res) => {
       console.error(`[${new Date().toISOString()}] Google Apps Script error:`, scriptError.message);
     }
 
-    // Removed auto-download logic. Recording download must be triggered manually.
+    // Also update the called and feedback columns
+    try {
+      const params = new URLSearchParams({
+        action: 'updateLead',
+        leadId: leadId,
+        called: 'Yes',
+        feedback1: `Status: ${status} | Notes: ${notes || 'Manual update'} | Call ID: ${callId || 'Manual'}`
+      });
+      await axios.get(GOOGLE_SCRIPT_URL, { params });
+    } catch (scriptError) {
+      console.error(`[${new Date().toISOString()}] Google Apps Script error:`, scriptError.message);
+    }
 
     res.json({ success: true, message: 'Call status updated manually' });
   } catch (err) {

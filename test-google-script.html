@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Google Apps Script MCUBE Callback</title>
+</head>
+<body>
+  <h2>Test MCUBE Callback to Google Apps Script</h2>
+  
+  <div style="margin: 20px 0;">
+    <h3>Test MCUBE Callback</h3>
+    <button onclick="testMCUBECallback()">Send MCUBE Callback</button>
+  </div>
+
+  <div style="margin: 20px 0;">
+    <h3>Test Lead Update with Recording</h3>
+    <input type="text" id="leadId" placeholder="Lead ID" value="LEAD-1746002046509" style="margin: 5px;">
+    <input type="text" id="recordingUrl" placeholder="Recording URL" value="https://example.com/recording.wav" style="margin: 5px;">
+    <input type="text" id="status" placeholder="Status" value="Call complete" style="margin: 5px;">
+    <input type="text" id="callId" placeholder="Call ID" value="CALL123" style="margin: 5px;">
+    <button onclick="testLeadUpdate()">Update Lead with Recording</button>
+  </div>
+
+  <div id="result" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc; min-height: 100px;">
+    Results will appear here...
+  </div>
+
+  <script>
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWzCFNuv-8Ugr-pzD4VJ08-QJ20RxvENe1bocm2Ya_2A02lrxH_WvmWddKqB_P8Ccm/exec';
+
+    function testMCUBECallback() {
+      const mockMCUBEData = {
+        callid: 'CALL' + Date.now(),
+        executive: '+919014600977',
+        customer: '+919876543210',
+        starttime: new Date().toISOString(),
+        endtime: new Date(Date.now() + 300000).toISOString(), // 5 minutes later
+        status: 'Call complete',
+        callType: 'outbound',
+        pulse: '1',
+        duration: '300',
+        answeredtime: '5',
+        filename: 'https://mcube.vmc.in/recordings/test-recording-' + Date.now() + '.wav',
+        refid: 'LEAD-1746002046509'
+      };
+
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(mockMCUBEData)
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('result').innerHTML = '<h4>MCUBE Callback Result:</h4><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      })
+      .catch(error => {
+        document.getElementById('result').innerHTML = '<h4>Error:</h4><pre>' + error.toString() + '</pre>';
+      });
+    }
+
+    function testLeadUpdate() {
+      const leadId = document.getElementById('leadId').value;
+      const recordingUrl = document.getElementById('recordingUrl').value;
+      const status = document.getElementById('status').value;
+      const callId = document.getElementById('callId').value;
+
+      const params = new URLSearchParams({
+        action: 'updateLeadWithRecording',
+        leadId: leadId,
+        recordingUrl: recordingUrl,
+        status: status,
+        callId: callId
+      });
+
+      fetch(`${GOOGLE_SCRIPT_URL}?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('result').innerHTML = '<h4>Lead Update Result:</h4><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+      })
+      .catch(error => {
+        document.getElementById('result').innerHTML = '<h4>Error:</h4><pre>' + error.toString() + '</pre>';
+      });
+    }
+  </script>
+</body>
+</html> 
