@@ -135,7 +135,8 @@ app.use('/api', pitchRoutes);
 app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
 app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
-app.use('/webhook', fbWebhookRoutes);
+app.use('/api', fbWebhookRoutes);
+// app.use('/webhook', fbWebhookRoutes);
 // app.use('/api/twilio', twilioRoutes); // ❌ Commented out: Replaced Twilio with MCUBE
 
 // ✅ Health Check
