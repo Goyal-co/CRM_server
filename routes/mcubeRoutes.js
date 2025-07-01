@@ -45,8 +45,9 @@ router.get('/trigger-call', async (req, res) => {
   const agentNumber = agent.replace('+91', '');
   const customerNumber = customer.replace('+91', '');
 
-  // Use MCUBE API without any callback URL
-  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}`;
+  // Use Render backend as callback URL
+  const callbackUrl = 'https://pratham-server.onrender.com/api/mcube-callback';
+  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&callbackurl=${encodeURIComponent(callbackUrl)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
   console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
@@ -156,170 +157,19 @@ router.get('/trigger-call', async (req, res) => {
   }
 });
 
-// 2️⃣ Callback Route (Only works with public URL like ngrok)
+// 2️⃣ Callback Route (Render backend receives MCUBE callback and stores in Firebase)
 router.post('/mcube-callback', async (req, res) => {
   try {
-    const {
-      callid,
-      executive,
-      customer,
-      starttime,
-      endtime,
-      status,
-      duration,
-      answeredtime,
-      callType,
-      filename,
-      refid,
-    } = req.body;
-
-    console.log(`[${new Date().toISOString()}] MCUBE Callback Received:`, {
-      callid,
-      refid,
-      status,
-      filename,
-      executive,
-      customer
+    const data = req.body;
+    // Store the callback data in Firestore collection 'mcube-callbacks'
+    await addDoc(collection(db, 'mcube-callbacks'), {
+      ...data,
+      receivedAt: new Date()
     });
-
-    let firebaseRecordingUrl = null;
-    let firebaseFileId = null;
-
-    // Download and upload to Firebase if filename exists
-    if (filename) {
-      try {
-        console.log(`[${new Date().toISOString()}] Downloading recording from: ${filename}`);
-        
-        // Download the file from MCUBE
-        const response = await axios.get(filename, { 
-          responseType: 'arraybuffer',
-          timeout: 60000 // 60 second timeout for large files
-        });
-        
-        // Create a temporary file
-        const tempDir = path.join(__dirname, '../temp');
-        if (!fs.existsSync(tempDir)) {
-          fs.mkdirSync(tempDir, { recursive: true });
-        }
-        
-        const tempFilePath = path.join(tempDir, `${callid}.wav`);
-        fs.writeFileSync(tempFilePath, response.data);
-        
-        console.log(`[${new Date().toISOString()}] Downloaded to temp: ${tempFilePath}`);
-
-        // Upload to Firebase Storage
-        const storageRef = ref(storage, `call-recordings/${callid}.wav`);
-        const fileBuffer = fs.readFileSync(tempFilePath);
-        
-        console.log(`[${new Date().toISOString()}] Uploading to Firebase Storage...`);
-        const uploadResult = await uploadBytes(storageRef, fileBuffer, {
-          contentType: 'audio/wav'
-        });
-        
-        // Get the download URL
-        firebaseRecordingUrl = await getDownloadURL(uploadResult.ref);
-        firebaseFileId = uploadResult.ref.fullPath;
-        
-        console.log(`[${new Date().toISOString()}] Uploaded to Firebase: ${firebaseRecordingUrl}`);
-        
-        // Clean up temp file
-        fs.unlinkSync(tempFilePath);
-        
-      } catch (uploadErr) {
-        console.error(`[${new Date().toISOString()}] Error uploading to Firebase:`, uploadErr);
-        firebaseRecordingUrl = null;
-        firebaseFileId = null;
-      }
-    }
-
-    // Store call metadata in Firestore
-    try {
-      const callData = {
-        callId: callid,
-        executive: executive,
-        customer: customer,
-        startTime: starttime,
-        endTime: endtime,
-        status: status,
-        callType: callType,
-        duration: duration,
-        answeredTime: answeredtime,
-        mcubeRecordingUrl: filename,
-        firebaseRecordingUrl: firebaseRecordingUrl,
-        firebaseFileId: firebaseFileId,
-        refId: refid,
-        createdAt: new Date(),
-        analysisStatus: 'pending',
-        analysisResults: null
-      };
-      
-      const docRef = await addDoc(collection(db, 'call-logs'), callData);
-      console.log(`[${new Date().toISOString()}] Call data stored in Firestore with ID: ${docRef.id}`);
-      
-    } catch (firestoreErr) {
-      console.error(`[${new Date().toISOString()}] Error storing in Firestore:`, firestoreErr);
-    }
-
-    // 🔁 Trigger Titan AI Call Analysis if recording exists (use Firebase URL if available)
-    if (firebaseRecordingUrl) {
-      try {
-        console.log(`[${new Date().toISOString()}] Triggering AI analysis with Firebase recording: ${firebaseRecordingUrl}`);
-        
-        await axios.post(`${process.env.CALL_ANALYSIS_API || 'http://localhost:5000/api/call-analysis'}`, {
-          leadId: refid,
-          recordingUrl: firebaseRecordingUrl,
-          callId: callid,
-          source: 'mcube',
-          status: status,
-          duration: duration,
-          firebaseFileId: firebaseFileId
-        }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log(`[${new Date().toISOString()}] AI analysis triggered successfully for callid: ${callid}`);
-      } catch (analysisError) {
-        console.error(`[${new Date().toISOString()}] Call analysis error:`, analysisError.message);
-      }
-    } else if (filename && process.env.CALL_ANALYSIS_API) {
-      // Fallback: use MCUBE URL if Firebase upload failed
-      try {
-        await axios.post(process.env.CALL_ANALYSIS_API, {
-          leadId: refid,
-          recordingUrl: filename,
-          source: 'mcube',
-        });
-        console.log(`[${new Date().toISOString()}] Call analysis triggered with MCUBE URL for callid: ${callid}`);
-      } catch (analysisError) {
-        console.error(`[${new Date().toISOString()}] Call analysis error:`, analysisError.message);
-      }
-    }
-
-    // 🔄 Update lead via Google Apps Script
-    try {
-      const params = new URLSearchParams({
-        action: 'updateLead',
-        leadId: refid,
-        called: status === 'Customer Busy' ? 'Yes' : 'No',
-        feedback1: firebaseRecordingUrl || filename || ''
-      });
-      await axios.get(GOOGLE_SCRIPT_URL, { params });
-      console.log(`[${new Date().toISOString()}] Lead updated for refid: ${refid}`);
-    } catch (scriptError) {
-      console.error(`[${new Date().toISOString()}] Google Apps Script error:`, scriptError.message);
-    }
-
-    res.status(200).json({ 
-      success: true, 
-      recordingUploaded: !!firebaseRecordingUrl,
-      firebaseUrl: firebaseRecordingUrl,
-      firebaseFileId: firebaseFileId
-    });
+    res.json({ success: true });
   } catch (err) {
-    console.error(`[${new Date().toISOString()}] Callback handling failed:`, err.message);
-    res.status(500).json({ error: 'Callback processing error', details: err.message });
+    console.error(`[${new Date().toISOString()}] Error saving MCUBE callback to Firebase:`, err);
+    res.status(500).json({ error: 'Failed to save callback to Firebase' });
   }
 });
 
