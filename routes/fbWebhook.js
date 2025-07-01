@@ -23,44 +23,52 @@ router.get('/fb-webhook', (req, res) => {
   }
 });
 
-// ✅ 2. Webhook POST for incoming leads
+// ✅ 2. Webhook POST for incoming leads (multi-entry, multi-change, more metadata)
 router.post('/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
     console.log('📦 Raw Body:', JSON.stringify(req.body, null, 2));
 
-    const entry = req.body.entry?.[0];
-    const changes = entry?.changes?.[0];
+    let leadsAdded = 0;
+    for (const entry of req.body.entry || []) {
+      for (const change of entry.changes || []) {
+        if (change.field === 'leadgen') {
+          const leadId = change.value.leadgen_id;
+          const formId = change.value.form_id;
+          const pageId = change.value.page_id;
 
-    if (changes?.field === 'leadgen') {
-      const leadId = changes.value.leadgen_id;
-      const formId = changes.value.form_id;
-      const pageId = changes.value.page_id;
+          console.log('📥 New Lead ID:', leadId);
+          console.log('📝 Form ID:', formId);
+          console.log('📄 Page ID:', pageId);
 
-      console.log('📥 New Lead ID:', leadId);
-      console.log('📝 Form ID:', formId);
-      console.log('📄 Page ID:', pageId);
+          // Fetch full lead data from Facebook Graph API
+          const response = await axios.get(
+            `https://graph.facebook.com/v19.0/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`
+          );
 
-      const response = await axios.get(
-        `https://graph.facebook.com/v19.0/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`
-      );
+          console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
 
-      console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
+          const fields = response.data.field_data;
+          const lead = {
+            name: fields.find(f => f.name === 'full_name')?.values?.[0] || '',
+            phone: fields.find(f => f.name === 'phone_number')?.values?.[0] || '',
+            email: fields.find(f => f.name === 'email')?.values?.[0] || '',
+            source: 'Facebook',
+            leadId,
+            formId,
+            pageId,
+            receivedAt: new Date().toISOString()
+          };
 
-      const fields = response.data.field_data;
-      const lead = {
-        name: fields.find(f => f.name === 'full_name')?.values?.[0] || '',
-        phone: fields.find(f => f.name === 'phone_number')?.values?.[0] || '',
-        email: fields.find(f => f.name === 'email')?.values?.[0] || '',
-        source: 'Facebook',
-        leadId,
-      };
-
-      await appendLeadToSheet(lead); // ✅ Send to Google Sheet
-    } else {
-      console.log('⚠️ Not a leadgen field:', changes?.field);
+          await appendLeadToSheet(lead); // ✅ Send to Google Sheet
+          leadsAdded++;
+        } else {
+          console.log('⚠️ Not a leadgen field:', change?.field);
+        }
+      }
     }
 
+    console.log(`✅ Leads added to sheet: ${leadsAdded}`);
     res.sendStatus(200);
   } catch (err) {
     console.error('❌ Lead fetch failed:', err.message);
