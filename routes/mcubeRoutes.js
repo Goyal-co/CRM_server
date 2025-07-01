@@ -47,7 +47,7 @@ router.get('/trigger-call', async (req, res) => {
 
   // Use Render backend as callback URL
   const callbackUrl = 'https://pratham-server.onrender.com/api/mcube-callback';
-  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&url=${encodeURIComponent(callbackUrl)}`;
+  const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&` url=${encodeURIComponent(callbackUrl)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
   console.log(`[${new Date().toISOString()}] Calling MCUBE URL: ${apiUrl}`);
