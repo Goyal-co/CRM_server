@@ -1,14 +1,10 @@
-// services/sheetsService.js
 import { google } from 'googleapis';
-import { readFile } from 'fs/promises';
 
 const SPREADSHEET_ID = '1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo';
-const SHEET_NAME = 'Leads'; // Update if your sheet/tab name is different
+const SHEET_NAME = 'Leads';
 
 async function authorizeGoogle() {
-  const credentials = JSON.parse(
-    await readFile('./google-service-account.json/google-service-account.json', 'utf-8') // 👈 updated path to actual JSON file
-  );
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
 
   const auth = new google.auth.GoogleAuth({
     credentials,
@@ -17,6 +13,7 @@ async function authorizeGoogle() {
 
   return google.sheets({ version: 'v4', auth });
 }
+
 
 export async function appendLeadToSheet(lead) {
   const sheets = await authorizeGoogle();
