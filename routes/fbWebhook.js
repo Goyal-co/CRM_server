@@ -5,6 +5,7 @@ import { appendLeadToSheet } from '../services/sheetsService.js'; // ✅ Google 
 const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
+// TODO: Move PAGE_ACCESS_TOKEN to environment variable for security
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBO1VN1BU3CwindbQ8oETT5C2ZA8wYFCsZBOkSr9HGNp22VXIR7p8XDCWkGs8YPEqw2wllMsjLjax3avlsww3ipybZCeZAGDZCbQRaQiL1ZC79lq5xKhLOyFZB7oZCFSZBraYRwryc0NOWbLkPDnL22JQuBQCmnIdvPd4ZA2uPkKWBNlUxerHhZBhFZCC33XwTR7S2HLwwprFNEGn9rE0jdb5NnEa023s0sUAG';
 
 // ✅ 1. Facebook Webhook Verification
@@ -43,7 +44,13 @@ router.post('/fb-webhook', async (req, res) => {
 
           // Fetch full lead data from Facebook Graph API
           const response = await axios.get(
-            `https://graph.facebook.com/v19.0/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`
+            `https://graph.facebook.com/v19.0/${leadId}`,
+            {
+              params: {
+                access_token: PAGE_ACCESS_TOKEN,
+                fields: 'field_data,created_time' // Add more fields if needed
+              }
+            }
           );
 
           console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
@@ -71,7 +78,12 @@ router.post('/fb-webhook', async (req, res) => {
     console.log(`✅ Leads added to sheet: ${leadsAdded}`);
     res.sendStatus(200);
   } catch (err) {
-    console.error('❌ Lead fetch failed:', err.message);
+    // Improved error logging for Facebook API errors
+    if (err.response) {
+      console.error('❌ Lead fetch failed:', err.message, '\nResponse data:', JSON.stringify(err.response.data, null, 2));
+    } else {
+      console.error('❌ Lead fetch failed:', err.message);
+    }
     res.sendStatus(500);
   }
 });
