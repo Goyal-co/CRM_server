@@ -7,7 +7,7 @@ const SHEET_NAME = 'Leads'; // Update if your sheet/tab name is different
 
 async function authorizeGoogle() {
   const credentials = JSON.parse(
-    await readFile('./google-service-account.json', 'utf-8') // 👈 rename your JSON key to this and place in root folder
+    await readFile('./google-service-account.json/google-service-account.json', 'utf-8') // 👈 updated path to actual JSON file
   );
 
   const auth = new google.auth.GoogleAuth({
