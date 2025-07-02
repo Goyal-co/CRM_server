@@ -6,7 +6,7 @@ const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
 // TODO: Move PAGE_ACCESS_TOKEN to environment variable for security
-const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBO1VN1BU3CwindbQ8oETT5C2ZA8wYFCsZBOkSr9HGNp22VXIR7p8XDCWkGs8YPEqw2wllMsjLjax3avlsww3ipybZCeZAGDZCbQRaQiL1ZC79lq5xKhLOyFZB7oZCFSZBraYRwryc0NOWbLkPDnL22JQuBQCmnIdvPd4ZA2uPkKWBNlUxerHhZBhFZCC33XwTR7S2HLwwprFNEGn9rE0jdb5NnEa023s0sUAG';
+const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
 // ✅ 1. Facebook Webhook Verification
 // Make sure this matches your ngrok URL in Facebook Developer Console:
