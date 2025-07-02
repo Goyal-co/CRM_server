@@ -166,6 +166,22 @@ router.post('/mcube-callback', async (req, res) => {
       ...data,
       receivedAt: new Date()
     });
+
+    // Automatically trigger call analysis after saving callback
+    try {
+      // Use the deployed backend URL for analysis endpoint
+      const analysisEndpoint = process.env.ANALYSIS_API_URL || 'https://pratham-server.onrender.com/api/analyze-call';
+      await axios.post(analysisEndpoint, {
+        recordingUrl: data.filename,
+        callId: data.callid,
+        agentName: data.executive || 'Unknown',
+        callDate: data.starttime ? data.starttime.split(' ')[0] : undefined
+      });
+      console.log('✅ Call analysis triggered for', data.callid);
+    } catch (err) {
+      console.error('❌ Failed to trigger call analysis:', err.message);
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(`[${new Date().toISOString()}] Error saving MCUBE callback to Firebase:`, err);
