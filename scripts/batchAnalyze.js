@@ -1,33 +1,34 @@
-import fs from 'fs';
-import path from 'path';
-import axios from 'axios';
-import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase-config.js';
 
-dotenv.config();
-
-const RECORDINGS_DIR = path.resolve('./recordings');
-
-async function analyzeFile(filename) {
-  const callId = filename.replace(".mp3", "");
-  const recordingUrl = `http://localhost:5000/recordings/${filename}`;
-
-  const payload = {
-    recordingUrl,
-    callId,
-    agentName: "AutoBatch",
-    callDate: new Date().toISOString().split("T")[0]
-  };
-
-  try {
-    const res = await axios.post("http://localhost:5000/api/analyze-call", payload);
-    console.log(`✅ Analyzed ${filename}:`, res.data.analysis.summary);
-  } catch (err) {
-    console.error(`❌ Failed to analyze ${filename}:`, err.message);
+async function batchAnalyze() {
+  const querySnapshot = await getDocs(collection(db, 'mcube-callbacks'));
+  const calls = [];
+  querySnapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    if (!data.transcript || !data.analysis) {
+      calls.push(docSnap.id);
+    }
+  });
+  console.log(`Found ${calls.length} calls to analyze.`);
+  for (const docId of calls) {
+    try {
+      const res = await fetch('https://pratham-server.onrender.com/api/analyze-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId })
+      });
+      const result = await res.json();
+      if (result.success) {
+        console.log(`Analyzed call ${docId}`);
+      } else {
+        console.error(`Failed to analyze call ${docId}:`, result.error);
+      }
+    } catch (err) {
+      console.error(`Error analyzing call ${docId}:`, err);
+    }
   }
 }
 
-const files = fs.readdirSync(RECORDINGS_DIR).filter(f => f.endsWith(".mp3"));
-
-for (const file of files) {
-  await analyzeFile(file);
-}
+batchAnalyze();
