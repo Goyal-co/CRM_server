@@ -35,10 +35,6 @@ router.post('/fb-webhook', async (req, res) => {
             leadId,
             project: '', // Set if you have a project value
             source: 'Facebook',
-            name: '',
-            email: '',
-            phone: '',
-            city: ''
           };
 
           // Try to fetch full lead data from Facebook
@@ -54,13 +50,14 @@ router.post('/fb-webhook', async (req, res) => {
             );
             console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
             const fields = response.data.field_data;
-            lead = {
-              ...lead,
-              name: fields.find(f => f.name === 'full_name')?.values?.[0] || '',
-              phone: fields.find(f => f.name === 'phone_number')?.values?.[0] || '',
-              email: fields.find(f => f.name === 'email')?.values?.[0] || '',
-              city: fields.find(f => f.name === 'city')?.values?.[0] || ''
-            };
+            // Dynamically add all field_data fields to the lead object
+            if (Array.isArray(fields)) {
+              fields.forEach(f => {
+                if (f.name && Array.isArray(f.values)) {
+                  lead[f.name] = f.values[0] || '';
+                }
+              });
+            }
           } catch (err) {
             console.error('❌ Lead fetch failed:', err.message, err.response?.data || '');
           }
