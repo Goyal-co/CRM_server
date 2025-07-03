@@ -103,7 +103,7 @@ async function appendLeadToSheetPublic(lead) {
   });
 }
 
-router.post('/fb-webhook', async (req, res) => {
+router.post('/api/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
     console.log('📦 Raw Body:', JSON.stringify(req.body, null, 2));
