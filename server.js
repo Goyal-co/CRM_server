@@ -75,6 +75,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import path from 'path'; // ✅ Corrected import: Use built-in Node.js path module
 import { fileURLToPath } from 'url';
+import adminStatsRoutes from './routes/adminStatsRoutes.js';
 
 // ✅ Import CJS-compatible routes
 import leadRoutes from './routes/leadRoutes.js';
@@ -107,18 +108,8 @@ if (!process.env.MCUBE_CALLBACK_URL) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // Required for webhooks
 
-// Explicit CORS configuration
-app.use(cors({
-  origin: [
-    'http://localhost:5173', // for local development
-    'https://pratham-frontend-whah.onrender.com', // your Render frontend (if used)
-    'https://crm-frontend-rudra-avulas-projects.vercel.app', // new Vercel frontend
-    'https://crm-frontend-virid-theta.vercel.app',
-    'https://crm-frontend-virid-theta.vercel.app/api/generate-pitch',
-    'https://crm-frontend-rudra-avulas-projects.vercel.app/api/generate-pitch' // new Vercel frontend
-  ],
-  credentials: true
-}));
+// Allow CORS for all origins
+app.use(cors());
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -136,6 +127,7 @@ app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
 app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
 app.use('/api', fbWebhookRoutes);
+app.use('/api/admin', adminStatsRoutes);
 // app.use('/webhook', fbWebhookRoutes);
 // app.use('/api/twilio', twilioRoutes); // ❌ Commented out: Replaced Twilio with MCUBE
 

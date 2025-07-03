@@ -1,30 +1,16 @@
 import express from 'express';
 import axios from 'axios';
-import { appendLeadToSheet } from '../services/sheetsService.js'; // ✅ Google Sheets logic
 
 const router = express.Router();
 
-const VERIFY_TOKEN = 'titan_verify';
-// TODO: Move PAGE_ACCESS_TOKEN to environment variable for security
-const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
+const GOOGLE_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzfrMTurwHJ7BllZuCpMLzrmZC8nOraJ2eEOhY4ZCuWgWn50zZ3A4nwwb-a9tTdAmr/exec';
 
-// ✅ 1. Facebook Webhook Verification
-// Make sure this matches your ngrok URL in Facebook Developer Console:
-// Example: https://ab71-106-51-69-178.ngrok-free.app/webhook/fb-webhook
-router.get('/fb-webhook', (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+async function appendLeadToSheetPublic(lead) {
+  await axios.post(GOOGLE_SCRIPT_WEBAPP_URL, lead, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
 
-  if (mode && token === VERIFY_TOKEN) {
-    console.log('✅ Webhook verified');
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
-  }
-});
-
-// ✅ 2. Webhook POST for incoming leads (multi-entry, multi-change, more metadata)
 router.post('/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
@@ -42,33 +28,47 @@ router.post('/fb-webhook', async (req, res) => {
           console.log('📝 Form ID:', formId);
           console.log('📄 Page ID:', pageId);
 
-          // Fetch full lead data from Facebook Graph API
-          const response = await axios.get(
-            `https://graph.facebook.com/v19.0/${leadId}`,
-            {
-              params: {
-                access_token: PAGE_ACCESS_TOKEN,
-                fields: 'field_data,created_time' // Add more fields if needed
-              }
-            }
-          );
-
-          console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
-
-          const fields = response.data.field_data;
-          const lead = {
-            name: fields.find(f => f.name === 'full_name')?.values?.[0] || '',
-            phone: fields.find(f => f.name === 'phone_number')?.values?.[0] || '',
-            email: fields.find(f => f.name === 'email')?.values?.[0] || '',
-            source: 'Facebook',
+          let lead = {
             leadId,
-            formId,
-            pageId,
-            receivedAt: new Date().toISOString()
+            project: '', // Set if you have a project value
+            source: 'Facebook',
+            name: '',
+            email: '',
+            phone: '',
+            city: ''
           };
 
-          await appendLeadToSheet(lead); // ✅ Send to Google Sheet
-          leadsAdded++;
+          // Try to fetch full lead data from Facebook
+          try {
+            const response = await axios.get(
+              `https://graph.facebook.com/v19.0/${leadId}`,
+              {
+                params: {
+                  access_token: process.env.PAGE_ACCESS_TOKEN,
+                  fields: 'field_data,created_time'
+                }
+              }
+            );
+            console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
+            const fields = response.data.field_data;
+            lead = {
+              ...lead,
+              name: fields.find(f => f.name === 'full_name')?.values?.[0] || '',
+              phone: fields.find(f => f.name === 'phone_number')?.values?.[0] || '',
+              email: fields.find(f => f.name === 'email')?.values?.[0] || '',
+              city: fields.find(f => f.name === 'city')?.values?.[0] || ''
+            };
+          } catch (err) {
+            console.error('❌ Lead fetch failed:', err.message, err.response?.data || '');
+          }
+
+          // Always append to Google Sheet, even if Facebook fetch fails
+          try {
+            await appendLeadToSheetPublic(lead);
+            leadsAdded++;
+          } catch (sheetErr) {
+            console.error('❌ Failed to append to Google Sheet:', sheetErr);
+          }
         } else {
           console.log('⚠️ Not a leadgen field:', change?.field);
         }
@@ -78,12 +78,7 @@ router.post('/fb-webhook', async (req, res) => {
     console.log(`✅ Leads added to sheet: ${leadsAdded}`);
     res.sendStatus(200);
   } catch (err) {
-    // Improved error logging for Facebook API errors
-    if (err.response) {
-      console.error('❌ Lead fetch failed:', err.message, '\nResponse data:', JSON.stringify(err.response.data, null, 2));
-    } else {
-      console.error('❌ Lead fetch failed:', err.message);
-    }
+    console.error('❌ Webhook error:', err.message);
     res.sendStatus(500);
   }
 });
