@@ -1,6 +1,9 @@
 import express from 'express';
 import axios from 'axios';
 
+const VERIFY_TOKEN = 'titan_verify';
+const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
+
 const router = express.Router();
 
 const GOOGLE_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzfrMTurwHJ7BllZuCpMLzrmZC8nOraJ2eEOhY4ZCuWgWn50zZ3A4nwwb-a9tTdAmr/exec';
@@ -44,7 +47,7 @@ router.post('/fb-webhook', async (req, res) => {
               `https://graph.facebook.com/v19.0/${leadId}`,
               {
                 params: {
-                  access_token: process.env.PAGE_ACCESS_TOKEN,
+                  access_token: PAGE_ACCESS_TOKEN,
                   fields: 'field_data,created_time'
                 }
               }
