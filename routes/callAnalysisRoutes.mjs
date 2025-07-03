@@ -24,7 +24,9 @@ router.get('/call-recordings', async (req, res) => {
       recordings.push({
         ...callData,
         receivedAt: rawData.receivedAt,
-        docId: docSnap.id
+        docId: docSnap.id,
+        analysis: rawData.analysis,
+        transcript: rawData.transcript
       });
     });
     res.json({ recordings });
