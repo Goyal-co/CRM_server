@@ -1,6 +1,15 @@
 // Google Apps Script for MCUBE Callback and Lead Management
 // Deploy as a web app to receive POST requests from MCUBE
 
+// Helper function to add CORS headers to responses
+function addCorsHeaders(response) {
+  return response
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+    .setHeader('Access-Control-Allow-Credentials', 'true');
+}
+
 function doPost(e) {
   try {
     // Parse the incoming data from MCUBE
@@ -38,15 +47,15 @@ function doPost(e) {
     logToCallLogSheet(data);
     
     // Return success response to MCUBE
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true, message: 'Callback processed successfully' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
     console.error('Error processing MCUBE callback:', error);
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -83,9 +92,9 @@ function doGet(e) {
     case 'getAllLeads':
       return getAllLeads();
     default:
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify({ error: 'Invalid action' }))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -124,9 +133,9 @@ function updateLeadWithRecording(leadId, recordingUrl, status, callId) {
     
     if (rowIndex === -1) {
       console.log(`Lead ID ${leadId} not found in sheet`);
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify({ success: false, error: 'Lead not found' }))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
     }
     
     // Update the recordings column
@@ -156,15 +165,15 @@ function updateLeadWithRecording(leadId, recordingUrl, status, callId) {
     
     console.log(`Updated lead ${leadId} with recording info`);
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true, message: 'Lead updated with recording info' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
     console.error('Error updating lead with recording:', error);
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -413,9 +422,9 @@ function updateLead(params) {
     }
     
     if (rowIndex === -1) {
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify({ error: 'Lead not found' }))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
     }
     
     if (calledCol !== -1) {
@@ -426,14 +435,14 @@ function updateLead(params) {
       sheet.getRange(rowIndex, feedbackCol + 1).setValue(params.feedback1);
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -454,20 +463,20 @@ function getProjectInfo(params) {
         headers.forEach((header, index) => {
           result[header] = data[i][index];
         });
-        return ContentService
+        return addCorsHeaders(ContentService
           .createTextOutput(JSON.stringify(result))
-          .setMimeType(ContentService.MimeType.JSON);
+          .setMimeType(ContentService.MimeType.JSON));
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: 'Project not found' }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -716,9 +725,9 @@ function getTeamStatus() {
     const sheet = spreadsheet.getSheetByName('Status');
     
     if (!sheet) {
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
     }
     
     const data = sheet.getDataRange().getValues();
@@ -733,14 +742,14 @@ function getTeamStatus() {
       result.push(row);
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -798,7 +807,7 @@ function getPerformance(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({
         totalCalls,
         delays: 0, // Would need to be calculated from call logs
@@ -807,12 +816,12 @@ function getPerformance(params) {
         breakMinutes: 0, // Would need to be calculated from status sheet
         score: Math.round((siteVisits + bookings) / Math.max(totalCalls, 1) * 100)
       }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -833,13 +842,13 @@ function getAllLeads() {
       result.push(lead);
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 } 

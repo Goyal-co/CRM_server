@@ -52,7 +52,11 @@ function doGet(e) {
           lastRow: lastRow,
           access: 'successful'
         }))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeader('Access-Control-Allow-Origin', '*')
+        .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+        .setHeader('Access-Control-Allow-Credentials', 'true');
     }
 
     // === Your existing doGet logic below ===
@@ -73,7 +77,11 @@ function doGet(e) {
         error: error.toString(),
         stack: error.stack
       }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+      .setHeader('Access-Control-Allow-Credentials', 'true');
   }
 }
 
@@ -167,7 +175,11 @@ function doPost(e) {
         leadId: data.leadId,
         rowData: rowData
       }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+      .setHeader('Access-Control-Allow-Credentials', 'true');
 
   } catch (error) {
     // Log the error details
@@ -181,6 +193,10 @@ function doPost(e) {
         error: error.toString(),
         stack: error.stack
       }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader('Access-Control-Allow-Origin', '*')
+      .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
+      .setHeader('Access-Control-Allow-Credentials', 'true');
   }
 } 
