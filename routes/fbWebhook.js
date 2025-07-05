@@ -89,13 +89,27 @@
 
 import express from 'express';
 import axios from 'axios';
+<<<<<<< HEAD
 import { appendLeadToSheet } from '../services/sheetsService.js';
+=======
+>>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
 
 const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
+<<<<<<< HEAD
+=======
+const GOOGLE_SCRIPT_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzfrMTurwHJ7BllZuCpMLzrmZC8nOraJ2eEOhY4ZCuWgWn50zZ3A4nwwb-a9tTdAmr/exec';
+
+async function appendLeadToSheetPublic(lead) {
+  await axios.post(GOOGLE_SCRIPT_WEBAPP_URL, lead, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+>>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
 router.post('/api/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
@@ -117,9 +131,12 @@ router.post('/api/fb-webhook', async (req, res) => {
             leadId,
             project: formId || 'FB Form', // Default project name
             source: 'Facebook',
+<<<<<<< HEAD
             formId: formId,
             pageId: pageId,
             created_time: new Date().toISOString(),
+=======
+>>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
           };
 
           // ✅ Try fetching lead details from FB
@@ -139,6 +156,7 @@ router.post('/api/fb-webhook', async (req, res) => {
             if (Array.isArray(fields)) {
               fields.forEach(f => {
                 if (f.name && Array.isArray(f.values)) {
+<<<<<<< HEAD
                   // Store the field value
                   lead[f.name] = f.values[0] || '';
                   
@@ -164,15 +182,28 @@ router.post('/api/fb-webhook', async (req, res) => {
             if (response.data.created_time) {
               lead.created_time = response.data.created_time;
             }
+=======
+                  lead[f.name] = f.values[0] || '';
+                }
+              });
+            }
+>>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
           } catch (err) {
             console.error('❌ Lead fetch failed:', err.message, err.response?.data || '');
           }
 
+<<<<<<< HEAD
           // ✅ Always try to send to Google Sheets directly
           try {
             await appendLeadToSheet(lead);
             leadsAdded++;
             console.log('✅ Lead successfully added to Google Sheet:', lead.leadId);
+=======
+          // ✅ Always try to send to Apps Script
+          try {
+            await appendLeadToSheetPublic(lead);
+            leadsAdded++;
+>>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
           } catch (sheetErr) {
             console.error('❌ Failed to append to Google Sheet:', sheetErr.message);
           }
