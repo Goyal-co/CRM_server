@@ -16,7 +16,7 @@ const MCUBE_API_KEY = process.env.MCUBE_API_KEY || '029f2e0cebd3e3473f0b4cbbaebd
 console.log('Using MCUBE API Key:', MCUBE_API_KEY.substring(0, 6) + '...' + MCUBE_API_KEY.slice(-4));
 // For local development without ngrok, we'll use a dummy callback URL
 const CALLBACK_URL = process.env.MCUBE_CALLBACK_URL || 'https://pratham-frontend-whah.onrender.com/api/mcube-callback';
-const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwzfrMTurwHJ7BllZuCpMLzrmZC8nOraJ2eEOhY4ZCuWgWn50zZ3A4nwwb-a9tTdAmr/exec';
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbznX9Q-zsf-Trlal1aBSn4WPngHIOeBAycoI8XrmzKUq85aNQ-Mwk0scn86ty-4gsjA/exec';
 
 // 1️⃣ Trigger MCUBE Call (Works without ngrok)
 router.get('/trigger-call', async (req, res) => {

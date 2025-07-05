@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 
 const router = express.Router();
 
-const GOOGLE_SCRIPT_BASE = 'https://script.google.com/macros/s/AKfycbyWzCFNuv-8Ugr-pzD4VJ08-QJ20RxvENe1bocm2Ya_2A02lrxH_WvmWddKqB_P8Ccm/exec';
+const GOOGLE_SCRIPT_BASE = 'https://script.google.com/macros/s/AKfycbznX9Q-zsf-Trlal1aBSn4WPngHIOeBAycoI8XrmzKUq85aNQ-Mwk0scn86ty-4gsjA/exec';
 
 router.get('/team-status', async (req, res) => {
   try {

@@ -100,7 +100,7 @@ function doGet(e) {
 
 function updateLeadWithRecording(leadId, recordingUrl, status, callId) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     if (!sheet) {
@@ -403,7 +403,7 @@ function triggerAnalysis(callId) {
 // Existing functions for lead management
 function updateLead(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const data = sheet.getDataRange().getValues();
@@ -448,7 +448,7 @@ function updateLead(params) {
 
 function getProjectInfo(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const data = sheet.getDataRange().getValues();
@@ -482,7 +482,7 @@ function getProjectInfo(params) {
 
 function getManualLeads(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const data = sheet.getDataRange().getValues();
@@ -514,7 +514,7 @@ function getManualLeads(params) {
 
 function addManualLead(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const values = [
@@ -545,7 +545,7 @@ function addManualLead(params) {
 
 function getUserTasks(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Tasks');
     
     if (!sheet) {
@@ -582,7 +582,7 @@ function getUserTasks(params) {
 
 function addUserTask(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     let sheet = spreadsheet.getSheetByName('Tasks');
     
     if (!sheet) {
@@ -606,7 +606,7 @@ function addUserTask(params) {
 
 function markTaskDone(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Tasks');
     
     const data = sheet.getDataRange().getValues();
@@ -636,7 +636,7 @@ function markTaskDone(params) {
 
 function getStatus(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Status');
     
     if (!sheet) {
@@ -676,7 +676,7 @@ function getStatus(params) {
 
 function updateStatus(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     let sheet = spreadsheet.getSheetByName('Status');
     
     if (!sheet) {
@@ -721,7 +721,7 @@ function updateStatus(params) {
 
 function getTeamStatus() {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Status');
     
     if (!sheet) {
@@ -755,7 +755,7 @@ function getTeamStatus() {
 
 function updateTeamStatus(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Status');
     
     const data = sheet.getDataRange().getValues();
@@ -784,7 +784,7 @@ function updateTeamStatus(params) {
 
 function getPerformance(params) {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const data = sheet.getDataRange().getValues();
@@ -827,7 +827,7 @@ function getPerformance(params) {
 
 function getAllLeads() {
   try {
-    const spreadsheet = SpreadsheetApp.openById('1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo');
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
     const data = sheet.getDataRange().getValues();

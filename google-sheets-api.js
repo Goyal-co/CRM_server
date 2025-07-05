@@ -39,7 +39,7 @@ function doGet(e) {
   try {
     // Health check: if no params, just return sheet status
     if (!e.parameter || Object.keys(e.parameter).length === 0) {
-      const SHEET_ID = '1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo';
+      const SHEET_ID = '1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo';
       const SHEET_NAME = 'Leads';
       const spreadsheet = SpreadsheetApp.openById(SHEET_ID);
       const sheet = spreadsheet.getSheetByName(SHEET_NAME);
@@ -95,7 +95,7 @@ function doPost(e) {
     console.log('Received data:', JSON.stringify(data, null, 2));
 
     // Your Google Sheet ID (replace with your actual sheet ID)
-    const SHEET_ID = '1rdMmTZDGEJ4ZGt4b83tgA__8sMBIRvsPcZurQMzVQOo';
+    const SHEET_ID = '1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo';
     const SHEET_NAME = 'Leads';
 
     // Log sheet access attempt

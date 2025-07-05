@@ -1,27 +1,38 @@
 import express from 'express';
 import axios from 'axios';
-import { appendLeadToSheet } from '../services/googleSheetsService.js';
 
 const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
-// Google Sheets API integration using service account
+// Google Apps Script integration for appending leads
 async function appendLeadToSheetSimple(lead) {
   try {
-    const spreadsheetId = '1d3G11e2wd9ETH61sCCvOxdR75baRacAF-1ip1g55xBk';
-    const success = await appendLeadToSheet(lead, spreadsheetId);
+    // Use the Google Apps Script URL for lead appending
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbznX9Q-zsf-Trlal1aBSn4WPngHIOeBAycoI8XrmzKUq85aNQ-Mwk0scn86ty-4gsjA/exec';
     
-    if (success) {
-      console.log('✅ Lead added to Google Sheet via API');
+    console.log('📤 Sending lead to Google Apps Script:', lead.leadId);
+    
+    const response = await axios.post(GOOGLE_SCRIPT_URL, lead, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000 // 10 second timeout
+    });
+    
+    if (response.data && response.data.success) {
+      console.log('✅ Lead added to Google Sheet via Apps Script');
       return true;
     } else {
-      console.error('❌ Google Sheets API error');
+      console.error('❌ Google Apps Script error:', response.data);
       return false;
     }
   } catch (error) {
-    console.error('❌ Failed to send to Google Sheets:', error.message);
+    console.error('❌ Failed to send to Google Apps Script:', error.message);
+    if (error.response) {
+      console.error('❌ Response data:', error.response.data);
+    }
     return false;
   }
 }
