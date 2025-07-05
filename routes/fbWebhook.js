@@ -1,11 +1,30 @@
 import express from 'express';
 import axios from 'axios';
-import { appendLeadToSheet } from '../services/sheetsService.js';
+import { appendLeadToSheet } from '../services/googleSheetsService.js';
 
 const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
+
+// Google Sheets API integration using service account
+async function appendLeadToSheetSimple(lead) {
+  try {
+    const spreadsheetId = '1d3G11e2wd9ETH61sCCvOxdR75baRacAF-1ip1g55xBk';
+    const success = await appendLeadToSheet(lead, spreadsheetId);
+    
+    if (success) {
+      console.log('✅ Lead added to Google Sheet via API');
+      return true;
+    } else {
+      console.error('❌ Google Sheets API error');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Failed to send to Google Sheets:', error.message);
+    return false;
+  }
+}
 
 router.post('/fb-webhook', async (req, res) => {
   try {
@@ -87,11 +106,13 @@ router.post('/fb-webhook', async (req, res) => {
               console.error('❌ Lead fetch failed:', err.message, err.response?.data || '');
             }
 
-            // ✅ Always try to send to Google Sheets directly
+            // ✅ Always try to send to Google Sheets via HTTP API
             try {
-              await appendLeadToSheet(lead);
-              leadsAdded++;
-              console.log('✅ Lead successfully added to Google Sheet:', lead.leadId);
+              const success = await appendLeadToSheetSimple(lead);
+              if (success) {
+                leadsAdded++;
+                console.log('✅ Lead successfully added to Google Sheet:', lead.leadId);
+              }
             } catch (sheetErr) {
               console.error('❌ Failed to append to Google Sheet:', sheetErr.message);
             }
@@ -141,9 +162,11 @@ router.post('/fb-webhook', async (req, res) => {
         };
         
         try {
-          await appendLeadToSheet(lead);
-          leadsAdded++;
-          console.log('✅ Direct lead successfully added to Google Sheet:', lead.leadId);
+          const success = await appendLeadToSheetSimple(lead);
+          if (success) {
+            leadsAdded++;
+            console.log('✅ Direct lead successfully added to Google Sheet:', lead.leadId);
+          }
         } catch (sheetErr) {
           console.error('❌ Failed to append direct lead to Google Sheet:', sheetErr.message);
         }
@@ -176,14 +199,30 @@ router.post('/test-webhook', async (req, res) => {
       created_time: new Date().toISOString()
     };
     
-    await appendLeadToSheet(testLead);
-    console.log('✅ Test lead added successfully');
-    
-    res.json({ 
-      success: true, 
-      message: 'Test lead added to Google Sheet',
-      leadId: testLead.leadId 
-    });
+    try {
+      const success = await appendLeadToSheetSimple(testLead);
+      if (success) {
+        console.log('✅ Test lead added successfully');
+        
+        res.json({ 
+          success: true, 
+          message: 'Test lead added to Google Sheet',
+          leadId: testLead.leadId 
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          message: 'Failed to add test lead to Google Sheet',
+          leadId: testLead.leadId 
+        });
+      }
+    } catch (err) {
+      console.error('❌ Test webhook error:', err.message);
+      res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
+    }
   } catch (err) {
     console.error('❌ Test webhook error:', err.message);
     res.status(500).json({ 
