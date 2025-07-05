@@ -18,7 +18,6 @@ async function authorizeGoogle() {
 export async function appendLeadToSheet(lead) {
   const sheets = await authorizeGoogle();
 
-<<<<<<< HEAD
   // Create a comprehensive array with all available data
   const values = [
     [
@@ -67,17 +66,6 @@ export async function appendLeadToSheet(lead) {
       ...Object.keys(lead)
         .filter(key => !['leadId', 'project', 'source', 'name', 'email', 'phone', 'city', 'formId', 'full_name', 'first_name', 'last_name', 'email_address', 'phone_number', 'mobile', 'telephone', 'location', 'address', 'message', 'comments', 'description', 'company', 'organization', 'job_title', 'position', 'occupation', 'budget', 'price_range', 'timeline', 'timeframe', 'when_to_start', 'property_type', 'property_interest', 'bedrooms', 'beds', 'location_preference', 'area', 'neighborhood', 'lead_source', 'how_did_you_hear', 'referral_source', 'urgency', 'priority', 'timeline_urgency', 'additional_requirements', 'special_requests', 'notes', 'facebook_page_id', 'page_id', 'facebook_form_id', 'created_time', 'submission_date'].includes(key))
         .map(key => lead[key] || '')
-=======
-  const values = [
-    [
-      lead.leadId || '',
-      '', // Project (blank by default)
-      lead.source || 'Facebook',
-      lead.name || '',
-      lead.email || '',
-      lead.phone || '',
-      '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''
->>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
     ]
   ];
 
@@ -90,10 +78,6 @@ export async function appendLeadToSheet(lead) {
     },
   });
 
-<<<<<<< HEAD
   console.log('✅ Lead pushed to Google Sheet with all available data');
   console.log('📊 Data fields included:', Object.keys(lead).join(', '));
-=======
-  console.log('✅ Lead pushed to Google Sheet');
->>>>>>> 90f45fab72e0ae96e596192cb76ae5165d88fc70
 }
