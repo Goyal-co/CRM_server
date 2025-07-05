@@ -1,25 +1,23 @@
 import express from 'express';
 import axios from 'axios';
+import { appendLeadToSheet } from '../services/googleSheetsService.js';
 
 const router = express.Router();
 
 const VERIFY_TOKEN = 'titan_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
-// Simple HTTP API endpoint for Google Sheets (no service account needed)
-const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbwEQpbPh_Zix9CGvWUcm7oFY4GOx8ETpb8pRhmttn9DWFzgiJQjQi7NyEENjViat82O/exec';
-
+// Google Sheets API integration using service account
 async function appendLeadToSheetSimple(lead) {
   try {
-    const response = await axios.post(GOOGLE_SHEETS_API_URL, lead, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    const spreadsheetId = '1d3G11e2wd9ETH61sCCvOxdR75baRacAF-1ip1g55xBk';
+    const success = await appendLeadToSheet(lead, spreadsheetId);
     
-    if (response.data.success) {
-      console.log('✅ Lead added to Google Sheet via HTTP API');
+    if (success) {
+      console.log('✅ Lead added to Google Sheet via API');
       return true;
     } else {
-      console.error('❌ Google Sheets API error:', response.data.error);
+      console.error('❌ Google Sheets API error');
       return false;
     }
   } catch (error) {
