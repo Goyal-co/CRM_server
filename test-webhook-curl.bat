@@ -3,7 +3,7 @@ echo 🧪 Testing Facebook Webhook with Curl...
 echo.
 
 echo 📤 Testing Facebook Leadgen Webhook Format:
-curl -X POST https://pratham-server.onrender.com/api/fb-webhook ^
+curl -X POST https://pratham-server.onrender.com/webhook/facebook ^
   -H "Content-Type: application/json" ^
   -H "User-Agent: Webhooks/1.0 (https://fb.me/webhooks)" ^
   -H "X-Hub-Signature: sha1=test-signature" ^
@@ -13,7 +13,7 @@ curl -X POST https://pratham-server.onrender.com/api/fb-webhook ^
 echo.
 echo.
 echo 📤 Testing Direct Lead Data Format:
-curl -X POST https://pratham-server.onrender.com/api/fb-webhook ^
+curl -X POST https://pratham-server.onrender.com/webhook/facebook ^
   -H "Content-Type: application/json" ^
   -d "{\"leadId\":\"1958340478236214\",\"project\":\"793235552669212\",\"source\":\"Facebook\",\"formId\":\"793235552669212\",\"pageId\":\"724302907610309\",\"email\":\"shanoorpendari721@gmail.com\",\"full_name\":\"shanoor\",\"phone_number\":\"+918884550785\",\"created_time\":\"2025-07-05T17:29:39+0000\"}"
 

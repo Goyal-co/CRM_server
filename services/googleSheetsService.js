@@ -47,7 +47,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
 
     const request = {
       spreadsheetId,
-      range: 'Sheet1!A:K', // Adjust range based on your sheet
+      range: 'Leads!A:K', // Use the correct sheet name "Leads"
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       resource: {
@@ -73,7 +73,7 @@ export async function testGoogleSheetsConnection(spreadsheetId) {
     
     const response = await sheets.spreadsheets.get({
       spreadsheetId,
-      ranges: ['Sheet1!A1:K1'], // Get headers
+      ranges: ['Leads!A1:K1'], // Get headers from "Leads" sheet
       fields: 'sheets.properties.title,sheets.data.rowData'
     });
     
@@ -94,7 +94,7 @@ export async function getSheetHeaders(spreadsheetId) {
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Sheet1!A1:K1'
+      range: 'Leads!A1:K1'
     });
     
     return response.data.values?.[0] || [];
