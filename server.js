@@ -126,14 +126,36 @@ app.use('/api', pitchRoutes);
 app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
 app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
-app.use('/api', fbWebhookRoutes);
+app.use('/api', fbWebhookRoutes); // This includes /api/fb-webhook and /api/test-webhook
 app.use('/api/admin', adminStatsRoutes);
-// app.use('/webhook', fbWebhookRoutes);
 // app.use('/api/twilio', twilioRoutes); // ❌ Commented out: Replaced Twilio with MCUBE
 
 // ✅ Health Check
 app.get('/', (req, res) => {
   res.send('🚀 CRM Backend is running successfully!');
+});
+
+// ✅ Debug: List all registered routes
+app.get('/api/routes', (req, res) => {
+  const routes = [];
+  app._router.stack.forEach(middleware => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach(handler => {
+        if (handler.route) {
+          routes.push({
+            path: handler.route.path,
+            methods: Object.keys(handler.route.methods)
+          });
+        }
+      });
+    }
+  });
+  res.json({ routes });
 });
 
 // ✅ Connect to MongoDB and dynamically import ESM routes

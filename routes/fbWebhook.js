@@ -7,7 +7,7 @@ const router = express.Router();
 const VERIFY_TOKEN = 'titan_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
-router.post('/api/fb-webhook', async (req, res) => {
+router.post('/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
     console.log('📦 Raw Body:', JSON.stringify(req.body, null, 2));
@@ -160,7 +160,7 @@ router.post('/api/fb-webhook', async (req, res) => {
 });
 
 // Test endpoint to verify Google Sheets integration
-router.post('/api/test-webhook', async (req, res) => {
+router.post('/test-webhook', async (req, res) => {
   try {
     console.log('🧪 Test webhook hit');
     
