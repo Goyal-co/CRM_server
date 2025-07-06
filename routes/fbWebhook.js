@@ -51,9 +51,20 @@ router.post('/fb-webhook', async (req, res) => {
             console.log('📝 Form ID:', formId);
             console.log('📄 Page ID:', pageId);
 
+            // Map form IDs to project names
+            const getProjectName = (formId) => {
+              const projectMap = {
+                '123456789': 'Magic Bricks',
+                '987654321': '99acres',
+                '456789123': 'Housing.com',
+                // Add more mappings as needed
+              };
+              return projectMap[formId] || 'Facebook Lead Form';
+            };
+
             let lead = {
               leadId,
-              project: formId || 'FB Form', // Default project name
+              project: getProjectName(formId),
               source: 'Facebook',
               formId: formId,
               pageId: pageId,
@@ -151,13 +162,14 @@ router.post('/fb-webhook', async (req, res) => {
       if (req.body && typeof req.body === 'object') {
         const lead = {
           leadId: req.body.leadId || req.body.id || `LEAD-${Date.now()}`,
-          project: req.body.project || req.body.formId || 'Direct Webhook',
+          project: req.body.project || 'Direct Webhook',
           source: req.body.source || 'Webhook',
           name: req.body.name || req.body.full_name || '',
           email: req.body.email || req.body.email_address || '',
           phone: req.body.phone || req.body.phone_number || '',
           city: req.body.city || req.body.location || '',
           created_time: new Date().toISOString(),
+          formId: req.body.formId || '',
           ...req.body // Include all other fields
         };
         
@@ -183,53 +195,54 @@ router.post('/fb-webhook', async (req, res) => {
 });
 
 // Test endpoint to verify Google Sheets integration
-router.post('/test-webhook', async (req, res) => {
-  try {
-    console.log('🧪 Test webhook hit');
+// router.post('/test-webhook', async (req, res) => {
+//   try {
+//     console.log('🧪 Test webhook hit');
     
-    const testLead = {
-      leadId: `TEST-${Date.now()}`,
-      project: 'Test Project',
-      source: 'Test Webhook',
-      name: 'Test User',
-      email: 'test@example.com',
-      phone: '1234567890',
-      city: 'Test City',
-      message: 'This is a test lead from webhook',
-      created_time: new Date().toISOString()
-    };
+//     const testLead = {
+//       leadId: `TEST-${Date.now()}`,
+//       project: 'Test Project',
+//       source: 'Test Webhook',
+//       name: 'Test User',
+//       email: 'test@example.com',
+//       phone: '1234567890',
+//       city: 'Test City',
+//       message: 'This is a test lead from webhook',
+//       created_time: new Date().toISOString(),
+//       formId: 'TEST_FORM'
+//     };
     
-    try {
-      const success = await appendLeadToSheetSimple(testLead);
-      if (success) {
-        console.log('✅ Test lead added successfully');
+//     try {
+//       const success = await appendLeadToSheetSimple(testLead);
+//       if (success) {
+//         console.log('✅ Test lead added successfully');
         
-        res.json({ 
-          success: true, 
-          message: 'Test lead added to Google Sheet',
-          leadId: testLead.leadId 
-        });
-      } else {
-        res.json({ 
-          success: false, 
-          message: 'Failed to add test lead to Google Sheet',
-          leadId: testLead.leadId 
-        });
-      }
-    } catch (err) {
-      console.error('❌ Test webhook error:', err.message);
-      res.status(500).json({ 
-        success: false, 
-        error: err.message 
-      });
-    }
-  } catch (err) {
-    console.error('❌ Test webhook error:', err.message);
-    res.status(500).json({ 
-      success: false, 
-      error: err.message 
-    });
-  }
-});
+//         res.json({ 
+//           success: true, 
+//           message: 'Test lead added to Google Sheet',
+//           leadId: testLead.leadId 
+//         });
+//       } else {
+//         res.json({ 
+//           success: false, 
+//           message: 'Failed to add test lead to Google Sheet',
+//           leadId: testLead.leadId 
+//         });
+//       }
+//     } catch (err) {
+//       console.error('❌ Test webhook error:', err.message);
+//       res.status(500).json({ 
+//         success: false, 
+//         error: err.message 
+//       });
+//     }
+//   } catch (err) {
+//     console.error('❌ Test webhook error:', err.message);
+//     res.status(500).json({ 
+//       success: false, 
+//       error: err.message 
+//     });
+//   }
+// });
 
-export default router;
+// export default router;
