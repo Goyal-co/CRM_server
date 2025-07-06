@@ -51,12 +51,14 @@ router.post('/fb-webhook', async (req, res) => {
             console.log('📝 Form ID:', formId);
             console.log('📄 Page ID:', pageId);
 
-            // Map form IDs to project names
+            // Map form IDs to project names (dynamic mapping)
             const getProjectName = (formId) => {
               const projectMap = {
-                '123456789': 'Magic Bricks',
-                '987654321': '99acres',
-                '456789123': 'Housing.com',
+                '376840518773731': 'Orchid Salisbury',
+                '793235552669212': 'Orchid Platinum',
+                '758750669703946': 'Orchid Life',
+                '836984054637126': 'Orchid Bloomsberry',
+                '655063727089499': 'Riviera Uno ',
                 // Add more mappings as needed
               };
               return projectMap[formId] || 'Facebook Lead Form';
@@ -162,7 +164,7 @@ router.post('/fb-webhook', async (req, res) => {
       if (req.body && typeof req.body === 'object') {
         const lead = {
           leadId: req.body.leadId || req.body.id || `LEAD-${Date.now()}`,
-          project: req.body.project || 'Direct Webhook',
+          project: getProjectName(req.body.formId),
           source: req.body.source || 'Webhook',
           name: req.body.name || req.body.full_name || '',
           email: req.body.email || req.body.email_address || '',
