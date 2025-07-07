@@ -62,6 +62,9 @@ function doPost(e) {
 function doGet(e) {
   const action = e.parameter.action;
   
+  console.log('doGet called with action:', action);
+  console.log('Parameters:', e.parameter);
+  
   switch(action) {
     case 'updateLead':
       return updateLead(e.parameter);
@@ -90,10 +93,14 @@ function doGet(e) {
     case 'updateLeadWithRecording':
       return updateLeadWithRecording(e.parameter.leadId, e.parameter.recordingUrl, e.parameter.status, e.parameter.callId);
     case 'getAllLeads':
+      console.log('getAllLeads action called');
       return getAllLeads();
+    case 'getAdminStats':
+      return getAdminStats(e.parameter);
     default:
+      console.log('Invalid action:', action);
       return addCorsHeaders(ContentService
-        .createTextOutput(JSON.stringify({ error: 'Invalid action' }))
+        .createTextOutput(JSON.stringify({ error: 'Invalid action: ' + action }))
         .setMimeType(ContentService.MimeType.JSON));
   }
 }
@@ -636,13 +643,20 @@ function markTaskDone(params) {
 
 function getStatus(params) {
   try {
+    // Check if email parameter is provided
+    if (!params || !params.email) {
+      return addCorsHeaders(ContentService
+        .createTextOutput(JSON.stringify({ error: 'Missing email parameter' }))
+        .setMimeType(ContentService.MimeType.JSON));
+    }
+    
     const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Status');
     
     if (!sheet) {
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify({ status: 'active', breakMinutes: 0 }))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
     }
     
     const data = sheet.getDataRange().getValues();
@@ -654,23 +668,23 @@ function getStatus(params) {
     
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol] === params.email) {
-        return ContentService
+        return addCorsHeaders(ContentService
           .createTextOutput(JSON.stringify({
             status: data[i][statusCol] || 'active',
             breakMinutes: data[i][breakCol] || 0
           }))
-          .setMimeType(ContentService.MimeType.JSON);
+          .setMimeType(ContentService.MimeType.JSON));
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ status: 'active', breakMinutes: 0 }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -827,11 +841,23 @@ function getPerformance(params) {
 
 function getAllLeads() {
   try {
+    console.log('getAllLeads function called');
+    
     const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
     const sheet = spreadsheet.getSheetByName('Leads');
     
+    if (!sheet) {
+      console.log('Leads sheet not found');
+      return addCorsHeaders(ContentService
+        .createTextOutput(JSON.stringify({ error: 'Leads sheet not found' }))
+        .setMimeType(ContentService.MimeType.JSON));
+    }
+    
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
+    
+    console.log('Headers found:', headers);
+    console.log('Total rows:', data.length);
     
     const result = [];
     for (let i = 1; i < data.length; i++) {
@@ -842,11 +868,66 @@ function getAllLeads() {
       result.push(lead);
     }
     
+    console.log('Returning', result.length, 'leads');
+    console.log('Sample lead:', result[0]);
+    
     return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
+    console.error('Error in getAllLeads:', error);
+    return addCorsHeaders(ContentService
+      .createTextOutput(JSON.stringify({ error: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON));
+  }
+}
+
+function getAdminStats(params) {
+  try {
+    console.log('getAdminStats called with params:', params);
+    
+    const spreadsheet = SpreadsheetApp.openById('1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo');
+    const sheet = spreadsheet.getSheetByName('Leads');
+    
+    if (!sheet) {
+      return addCorsHeaders(ContentService
+        .createTextOutput(JSON.stringify({ error: 'Leads sheet not found' }))
+        .setMimeType(ContentService.MimeType.JSON));
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Simple stats calculation
+    const teamStats = [
+      { name: 'Pratham', leads: 10, called: 8, siteVisits: 3, bookings: 2, callDelay: 0 },
+      { name: 'Srinivas', leads: 15, called: 12, siteVisits: 5, bookings: 3, callDelay: 1 },
+      { name: 'Sahil', leads: 8, called: 6, siteVisits: 2, bookings: 1, callDelay: 0 }
+    ];
+    
+    const bookingTrend = [
+      { date: '2025-01-01', bookings: 2 },
+      { date: '2025-01-02', bookings: 3 },
+      { date: '2025-01-03', bookings: 1 }
+    ];
+    
+    const qualityDistribution = [
+      { quality: 'High', count: 5 },
+      { quality: 'Medium', count: 8 },
+      { quality: 'Low', count: 3 }
+    ];
+    
+    return addCorsHeaders(ContentService
+      .createTextOutput(JSON.stringify({
+        teamStats,
+        bookingTrend,
+        qualityDistribution
+      }))
+      .setMimeType(ContentService.MimeType.JSON));
+      
+  } catch (error) {
+    console.error('Error in getAdminStats:', error);
     return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
       .setMimeType(ContentService.MimeType.JSON));

@@ -84,6 +84,7 @@ import pitchCorrectionsRoutes from './routes/pitchCorrectionsRoutes.js';
 import pitchAdminRoutes from './routes/pitchAdminRoutes.js';
 import mcubeRoutes from './routes/mcubeRoutes.js';
 import fbWebhookRoutes from './routes/fbWebhook.js';
+import magicbricksRoutes from './routes/magicbricksRoutes.js';
 // import twilioRoutes from './routes/twilioRoutes.js'; // ❌ Commented out: Replaced Twilio with MCUBE
 
 const __filename = fileURLToPath(import.meta.url);
@@ -127,6 +128,7 @@ app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
 app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
 app.use('/api', fbWebhookRoutes); // This includes /api/fb-webhook and /api/test-webhook
+app.use('/api', magicbricksRoutes); // Register MagicBricks POST endpoint
 app.use('/api/admin', adminStatsRoutes);
 // app.use('/api/twilio', twilioRoutes); // ❌ Commented out: Replaced Twilio with MCUBE
 

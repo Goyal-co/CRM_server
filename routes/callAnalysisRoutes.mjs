@@ -8,6 +8,29 @@ import path from 'path';
 
 const router = express.Router();
 
+// GET: Fetch leads data from Google Sheets for name mapping
+router.get('/leads-data', async (req, res) => {
+  try {
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbznX9Q-zsf-Trlal1aBSn4WPngHIOeBAycoI8XrmzKUq85aNQ-Mwk0scn86ty-4gsjA/exec';
+    const response = await fetch(`${scriptUrl}?action=getAllLeads`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    
+    res.json({ leads: data });
+  } catch (err) {
+    console.error('Error fetching leads data:', err);
+    res.status(500).json({ error: 'Failed to fetch leads data', details: err.message });
+  }
+});
+
 // GET: Fetch all call recordings from Firestore
 router.get('/call-recordings', async (req, res) => {
   try {
