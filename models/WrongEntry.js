@@ -6,6 +6,7 @@ const WrongEntrySchema = new mongoose.Schema({
   rejectedItem: String,
   reason: String,
   flaggedBy: String,
+  correction: String, // New field for the corrected value
   timestamp: { type: Date, default: Date.now }
 });
 

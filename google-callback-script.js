@@ -1,13 +1,12 @@
 // Google Apps Script for MCUBE Callback and Lead Management
 // Deploy as a web app to receive POST requests from MCUBE
 
-// Helper function to add CORS headers to responses
+// Add CORS helper at the top
 function addCorsHeaders(response) {
   return response
-    .setHeader('Access-Control-Allow-Origin', '*')
-    .setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin')
-    .setHeader('Access-Control-Allow-Credentials', 'true');
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
 function doPost(e) {
@@ -508,14 +507,14 @@ function getManualLeads(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -539,14 +538,14 @@ function addManualLead(params) {
     
     sheet.getRange(sheet.getLastRow() + 1, 1, 1, values[0].length).setValues(values);
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -556,9 +555,9 @@ function getUserTasks(params) {
     const sheet = spreadsheet.getSheetByName('Tasks');
     
     if (!sheet) {
-      return ContentService
+      return addCorsHeaders(ContentService
         .createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
+        .setMimeType(ContentService.MimeType.JSON));
     }
     
     const data = sheet.getDataRange().getValues();
@@ -576,14 +575,14 @@ function getUserTasks(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -600,14 +599,14 @@ function addUserTask(params) {
     const values = [[params.email, params.task, 'No']];
     sheet.getRange(sheet.getLastRow() + 1, 1, 1, 3).setValues(values);
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -630,14 +629,14 @@ function markTaskDone(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -722,14 +721,14 @@ function updateStatus(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 
@@ -785,14 +784,14 @@ function updateTeamStatus(params) {
       }
     }
     
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
       
   } catch (error) {
-    return ContentService
+    return addCorsHeaders(ContentService
       .createTextOutput(JSON.stringify({ error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+      .setMimeType(ContentService.MimeType.JSON));
   }
 }
 

@@ -41,4 +41,18 @@ router.delete('/wrong-entries/:id', async (req, res) => {
   }
 });
 
+// PATCH: Update a wrong entry with a correction
+router.patch('/wrong-entries/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { correction } = req.body;
+    if (!correction) return res.status(400).json({ error: 'Correction is required' });
+    const updated = await WrongEntry.findByIdAndUpdate(id, { correction }, { new: true });
+    res.json({ success: true, entry: updated });
+  } catch (err) {
+    console.error('Failed to update wrong entry:', err);
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
 export default router;
