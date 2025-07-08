@@ -32,8 +32,8 @@ function normalizeProjectName(projectName) {
 // POST endpoint for MagicBricks lead collection
 router.post('/magicbricks/lead', async (req, res) => {
   try {
-    // Accept data from either JSON body or query params
-    const body = Object.keys(req.body || {}).length > 0 ? req.body : req.query;
+    // Merge body and query, giving priority to body
+    const body = { ...req.query, ...req.body };
     
     // Validate required fields
     if (!body.responderName || !body.responderPhone || !body.responderEmail || !body.projectName) {
