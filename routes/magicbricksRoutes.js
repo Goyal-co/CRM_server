@@ -6,23 +6,53 @@ const router = express.Router();
 // Set your Google Sheet ID here (same as fbWebhook for now)
 const SPREADSHEET_ID = '1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo';
 
+// Helper to normalize project names across all sources
+function normalizeProjectName(projectName) {
+  if (!projectName) return '';
+  
+  // Remove extra spaces and trim
+  let normalized = projectName.trim();
+  
+  // Convert to title case (first letter of each word capitalized)
+  normalized = normalized.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  
+  // Handle specific project name mappings
+  const projectMappings = {
+    'RIVIERA UNO': 'Riviera Uno',
+    'Riviera Uno ': 'Riviera Uno', // Remove extra space
+    'ORCHID SALISBURY': 'Orchid Salisbury',
+    'ORCHID PLATINUM': 'Orchid Platinum',
+    'ORCHID LIFE': 'Orchid Life',
+    'ORCHID BLOOMSBERRY': 'Orchid Bloomsberry'
+  };
+  
+  return projectMappings[normalized] || normalized;
+}
+
 // POST endpoint for MagicBricks lead collection
 router.post('/magicbricks/lead', async (req, res) => {
   try {
     // Extract lead data from POST body
     const body = req.body || {};
-    // Map incoming fields to a standard lead object
+    
+    // Validate required fields
+    if (!body.responderName || !body.responderPhone || !body.responderEmail || !body.projectName) {
+      return res.status(400).json({ 
+        status: 'error', 
+        message: 'Failure: Missing required fields (responderName, responderPhone, responderEmail, projectName)' 
+      });
+    }
+    
+    // Map incoming fields to a standard lead object with correct column order
     const lead = {
-      leadId: body.leadId || body.id || `MAGICBRICKS-${Date.now()}`,
-      project: body.project || body.projectName || body.isd || '',
-      source: body.source || 'MagicBricks',
-      name: body.name || body.responderName || '',
-      email: body.email || body.responderEmail || '',
-      phone: body.phone || body.responderPhone || body.mobile || '',
-      city: body.city || body.City || '',
-      comments: body.comments || body.msg || '',
-      created_time: new Date().toISOString(),
-      ...body // Include all other fields
+      leadId: `MAGICBRICKS-${Date.now()}`,
+      project: normalizeProjectName(body.projectName),
+      source: 'MagicBricks',
+      name: body.responderName,
+      email: body.responderEmail,
+      phone: body.responderPhone,
+      city: body.city || '', // Get city if available, otherwise leave empty
+      created_time: new Date().toISOString()
     };
 
     // Append to Google Sheet

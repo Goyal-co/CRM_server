@@ -11,7 +11,7 @@ const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07A
 async function appendLeadToSheetSimple(lead) {
   try {
     const spreadsheetId = '1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo';
-    const success = await appendLeadToSheet(lead, spreadsheetId);
+    const success = await appendLeadToSheet(mapLeadToSheetColumns(lead), spreadsheetId);
     
     if (success) {
       console.log('✅ Lead added to Google Sheet via API');
@@ -24,6 +24,42 @@ async function appendLeadToSheetSimple(lead) {
     console.error('❌ Failed to send to Google Sheets:', error.message);
     return false;
   }
+}
+
+// Helper to normalize project names across all sources
+function normalizeProjectName(projectName) {
+  if (!projectName) return '';
+  
+  // Remove extra spaces and trim
+  let normalized = projectName.trim();
+  
+  // Convert to title case (first letter of each word capitalized)
+  normalized = normalized.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  
+  // Handle specific project name mappings
+  const projectMappings = {
+    'RIVIERA UNO': 'Riviera Uno',
+    'Riviera Uno ': 'Riviera Uno', // Remove extra space
+    'ORCHID SALISBURY': 'Orchid Salisbury',
+    'ORCHID PLATINUM': 'Orchid Platinum',
+    'ORCHID LIFE': 'Orchid Life',
+    'ORCHID BLOOMSBERRY': 'Orchid Bloomsberry'
+  };
+  
+  return projectMappings[normalized] || normalized;
+}
+
+// Helper to map only required columns for Google Sheet
+function mapLeadToSheetColumns(lead) {
+  return {
+    leadId: lead.leadId || '',
+    project: normalizeProjectName(lead.project) || '',
+    source: lead.source || '',
+    name: lead.name || '',
+    email: lead.email || '',
+    phone: lead.phone || '',
+    city: lead.city || ''
+  };
 }
 
 router.post('/fb-webhook', async (req, res) => {
@@ -51,14 +87,14 @@ router.post('/fb-webhook', async (req, res) => {
             console.log('📝 Form ID:', formId);
             console.log('📄 Page ID:', pageId);
 
-            // Map form IDs to project names (dynamic mapping)
+            // Fix the project mapping (remove extra space)
             const getProjectName = (formId) => {
               const projectMap = {
                 '376840518773731': 'Orchid Salisbury',
                 '793235552669212': 'Orchid Platinum',
                 '758750669703946': 'Orchid Life',
                 '836984054637126': 'Orchid Bloomsberry',
-                '655063727089499': 'Riviera Uno ',
+                '655063727089499': 'Riviera Uno', // Removed extra space
                 // Add more mappings as needed
               };
               return projectMap[formId] || 'Facebook Lead Form';
@@ -121,7 +157,7 @@ router.post('/fb-webhook', async (req, res) => {
 
             // ✅ Always try to send to Google Sheets via HTTP API
             try {
-              const success = await appendLeadToSheetSimple(lead);
+              const success = await appendLeadToSheetSimple(mapLeadToSheetColumns(lead));
               if (success) {
                 leadsAdded++;
                 console.log('✅ Lead successfully added to Google Sheet:', lead.leadId);
@@ -164,7 +200,7 @@ router.post('/fb-webhook', async (req, res) => {
       if (req.body && typeof req.body === 'object') {
         const lead = {
           leadId: req.body.leadId || req.body.id || `LEAD-${Date.now()}`,
-          project: getProjectName(req.body.formId),
+          project: normalizeProjectName(getProjectName(req.body.formId)),
           source: req.body.source || 'Webhook',
           name: req.body.name || req.body.full_name || '',
           email: req.body.email || req.body.email_address || '',
@@ -176,7 +212,7 @@ router.post('/fb-webhook', async (req, res) => {
         };
         
         try {
-          const success = await appendLeadToSheetSimple(lead);
+          const success = await appendLeadToSheetSimple(mapLeadToSheetColumns(lead));
           if (success) {
             leadsAdded++;
             console.log('✅ Direct lead successfully added to Google Sheet:', lead.leadId);
