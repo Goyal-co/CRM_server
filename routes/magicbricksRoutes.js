@@ -31,6 +31,7 @@ function normalizeProjectName(projectName) {
 
 // POST endpoint for MagicBricks lead collection
 router.post('/magicbricks/lead', async (req, res) => {
+  console.log('Received POST /magicbricks/lead', { body: req.body, query: req.query });
   try {
     // Merge body and query, giving priority to body
     const body = { ...req.query, ...req.body };
@@ -66,6 +67,12 @@ router.post('/magicbricks/lead', async (req, res) => {
     console.error('❌ MagicBricks webhook error:', err.message);
     res.status(500).json({ status: 'error', message: 'Failure: Internal server error' });
   }
+});
+
+// GET endpoint for debugging query param handling
+router.get('/magicbricks/lead', async (req, res) => {
+  console.log('Received GET /magicbricks/lead', { query: req.query });
+  res.json({ received: req.query });
 });
 
 export default router; 
