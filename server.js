@@ -110,7 +110,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // Required for webhooks
 
 // Allow CORS for all origins
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://crm-frontend-rudra-avulas-projects.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Request logging middleware
 app.use((req, res, next) => {
