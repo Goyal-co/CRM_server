@@ -2,6 +2,7 @@ import express from 'express';
 import { OpenAI } from 'openai';
 import WrongEntry from '../models/WrongEntry.js';
 import Correction from '../models/Correction.js';
+import { db as adminDb } from '../firebase-admin.js';
 
 const router = express.Router();
 
@@ -11,24 +12,29 @@ router.post('/generate-pitch', async (req, res) => {
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    const { projectInfo } = req.body;
-
-    if (!projectInfo || !projectInfo["Project Name"]) {
-      return res.status(400).json({ error: "Missing or invalid project info" });
+    // Get project name from request
+    const { projectName } = req.body;
+    if (!projectName) {
+      return res.status(400).json({ error: "Missing project name" });
     }
 
+    // Fetch project info from Firestore
+    const docRef = adminDb.collection('projectContent').doc(projectName);
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+      return res.status(404).json({ error: "Project info not found" });
+    }
+    const projectInfo = docSnap.data();
+
+    // Compose prompt using Firestore project info
     const prompt = `
 You are a real estate sales assistant helping a team pitch a residential project.
 
 Here are the project details:
 
-- Project Name: ${projectInfo["Project Name"]}
-- Location: ${projectInfo["Location"]}
-- Land Price Nearby: ${projectInfo["Price (per sq ft)"]}
-- Metro Station Nearby: ${projectInfo["Metro Nearby"]}
-- Possession: ${projectInfo["Possession"]}
-- Configuration: ${projectInfo["Configuration"]}
-- Amenities: ${projectInfo["Amenities"]}
+- Project Name: ${projectName}
+- Notes: ${projectInfo.notes || ''}
+- File: ${projectInfo.fileName ? `See file at ${projectInfo.fileUrl}` : 'No file uploaded'}
 
 Please generate the following sections in a clean numbered format:
 1. Why This Project?
@@ -61,6 +67,7 @@ Please generate the following sections in a clean numbered format:
       priceJustification: sections[5]?.split("\n").map(l => l.trim()).filter(Boolean) || [],
       objectionHandler: sections[6]?.split("\n").map(l => l.trim()).filter(Boolean) || [],
       financeTips: sections[7]?.split("\n").map(l => l.trim()).filter(Boolean) || [],
+      projectInfo,
     };
 
     res.json(result);
