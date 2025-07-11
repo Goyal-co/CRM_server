@@ -79,9 +79,9 @@ import adminStatsRoutes from './routes/adminStatsRoutes.js';
 
 // ✅ Import CJS-compatible routes
 import leadRoutes from './routes/leadRoutes.js';
-import pitchRoutes from './routes/pitchRoutes.js';
-import pitchCorrectionsRoutes from './routes/pitchCorrectionsRoutes.js';
-import pitchAdminRoutes from './routes/pitchAdminRoutes.js';
+// import pitchRoutes from './routes/pitchRoutes.js';
+// import pitchCorrectionsRoutes from './routes/pitchCorrectionsRoutes.js';
+// import pitchAdminRoutes from './routes/pitchAdminRoutes.js';
 import mcubeRoutes from './routes/mcubeRoutes.js';
 import fbWebhookRoutes from './routes/fbWebhook.js';
 import magicbricksRoutes from './routes/magicbricksRoutes.js';
