@@ -130,9 +130,9 @@ app.use('/recordings', express.static(path.join(__dirname, 'recordings')));
 
 // ✅ Register primary API routes
 app.use('/api/leads', leadRoutes);
-app.use('/api', pitchRoutes);
-app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
-app.use('/api/admin', pitchAdminRoutes);
+// app.use('/api', pitchRoutes);
+// app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
+// app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
 app.use('/api', fbWebhookRoutes); // This includes /api/fb-webhook and /api/test-webhook
 app.use('/api', magicbricksRoutes); // Register MagicBricks POST endpoint
