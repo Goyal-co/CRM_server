@@ -79,7 +79,7 @@ import adminStatsRoutes from './routes/adminStatsRoutes.js';
 
 // ✅ Import CJS-compatible routes
 import leadRoutes from './routes/leadRoutes.js';
-// import pitchRoutes from './routes/pitchRoutes.js';
+import pitchRoutes from './routes/pitchRoutes.js';
 // import pitchCorrectionsRoutes from './routes/pitchCorrectionsRoutes.js';
 // import pitchAdminRoutes from './routes/pitchAdminRoutes.js';
 import mcubeRoutes from './routes/mcubeRoutes.js';
@@ -111,12 +111,10 @@ app.use(express.urlencoded({ extended: false })); // Required for webhooks
 
 // Allow CORS for all origins
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://crm-frontend-rudra-avulas-projects.vercel.app'
-  ],
+  origin: true, // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: true
 }));
 
 // Request logging middleware
@@ -130,7 +128,7 @@ app.use('/recordings', express.static(path.join(__dirname, 'recordings')));
 
 // ✅ Register primary API routes
 app.use('/api/leads', leadRoutes);
-// app.use('/api', pitchRoutes);
+app.use('/api', pitchRoutes);
 // app.use('/api/pitch-corrections', pitchCorrectionsRoutes);
 // app.use('/api/admin', pitchAdminRoutes);
 app.use('/api', mcubeRoutes);
