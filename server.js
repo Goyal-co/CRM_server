@@ -112,9 +112,7 @@ app.use(express.urlencoded({ extended: false })); // Required for webhooks
 // Allow CORS for all origins
 app.use(cors({
   origin: true, // Allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: true
+  credentials: true,
 }));
 
 // Request logging middleware
