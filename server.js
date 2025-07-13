@@ -109,10 +109,20 @@ if (!process.env.MCUBE_CALLBACK_URL) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false })); // Required for webhooks
 
-// Allow CORS for all origins
+// Enhanced CORS configuration for PitchPal and all API endpoints
 app.use(cors({
-  origin: true, // Allow all origins
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow all origins for development and production
+    // You can restrict this to specific domains in production
+    callback(null, true);
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
 }));
 
 // Request logging middleware
