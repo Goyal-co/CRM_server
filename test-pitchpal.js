@@ -5,7 +5,7 @@
  * Tests all PitchPal functionality to ensure everything works correctly
  */
 
-const API_URL = process.env.VITE_API_URL || 'https://pratham-server.onrender.com';
+const API_URL = process.env.VITE_API_URL || 'https://api.goyalhariyanacrm.in/';
 
 console.log('🧪 Testing PitchPal functionality...');
 console.log('API URL:', API_URL);

@@ -14,7 +14,7 @@ async function batchAnalyze() {
   console.log(`Found ${calls.length} calls to analyze.`);
   for (const docId of calls) {
     try {
-      const res = await fetch('https://pratham-server.onrender.com/api/analyze-call', {
+      const res = await fetch('https://api.goyalhariyanacrm.in/api/analyze-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ docId })

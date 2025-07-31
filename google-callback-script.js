@@ -90,7 +90,7 @@ function extractLeadsFromGmail() {
         lead.phone,
         lead.city
       ]]);
-     
+      
       newRow++;
       message.markRead();
     });
@@ -713,24 +713,24 @@ function doGet(e) {
 
 
     // 📋 Manual Leads - Fetch
-    if (action === "getManualLeads") {
-      const sheet = ss.getSheetByName("Manual Leads");
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
-      const rows = data.slice(1);
+  if (action === "getManualLeads") {
+  const sheet = ss.getSheetByName("Manual Leads");
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
 
 
       const result = rows
         .filter(row => row.length > 1 && row[headers.indexOf("Assignee")].toLowerCase() === email)
-        .map(row => {
-          const obj = {};
-          headers.forEach((h, i) => obj[h] = row[i]);
-          return obj;
-        });
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = row[i]);
+        return obj;
+      });
 
 
-      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-    }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
 
 
     // 📋 Manual Leads - Add
@@ -837,9 +837,9 @@ if (action === "getAdminStats") {
 
 
   const sheet = ss.getSheetByName("Leads");
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
 
   const idx = (col) => headers.indexOf(col);
 
@@ -879,24 +879,24 @@ if (action === "getAdminStats") {
   Logger.log(`Filtered Leads Count: ${leads.length}`);
 
 
-  const teamMap = {};
+    const teamMap = {};
 
 
   leads.forEach(row => {
     const name = row[idx("Assigned To")] || "Unknown";
-    if (!teamMap[name]) {
-      teamMap[name] = {
-        name,
-        leads: 0,
-        called: 0,
-        siteVisits: 0,
-        bookings: 0,
-        callDelay: 0,
+      if (!teamMap[name]) {
+        teamMap[name] = {
+          name,
+          leads: 0,
+          called: 0,
+          siteVisits: 0,
+          bookings: 0,
+          callDelay: 0,
       };
     }
 
 
-    teamMap[name].leads++;
+      teamMap[name].leads++;
     if (row[idx("Called?")] === "Yes") teamMap[name].called++;
     if (row[idx("Site Visit?")] === "Yes") teamMap[name].siteVisits++;
     if (row[idx("Booked?")] === "Yes") teamMap[name].bookings++;
@@ -904,25 +904,25 @@ if (action === "getAdminStats") {
   });
 
 
-  const teamStats = Object.values(teamMap);
+    const teamStats = Object.values(teamMap);
 
 
-  const bookingTrendMap = {};
+    const bookingTrendMap = {};
   leads.forEach(row => {
     const dt = new Date(row[idx("Assigned Time")]);
-    const key = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
-    if (!bookingTrendMap[key]) bookingTrendMap[key] = 0;
+      const key = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
+      if (!bookingTrendMap[key]) bookingTrendMap[key] = 0;
     if (row[idx("Booked?")] === "Yes") bookingTrendMap[key]++;
-  });
+    });
 
 
-  const bookingTrend = Object.keys(bookingTrendMap).map(date => ({
-    date,
-    bookings: bookingTrendMap[date],
-  }));
+    const bookingTrend = Object.keys(bookingTrendMap).map(date => ({
+      date,
+      bookings: bookingTrendMap[date],
+    }));
 
 
-  const qualityMap = { WIP: 0, Warm: 0, Cold: 0 };
+    const qualityMap = { WIP: 0, Warm: 0, Cold: 0 };
   leads.forEach(row => {
     const q = row[idx("Lead Quality")];
     if (q && qualityMap[q] !== undefined) {
@@ -931,16 +931,16 @@ if (action === "getAdminStats") {
   });
 
 
-  const qualityDistribution = Object.keys(qualityMap).map(k => ({
-    name: k,
-    value: qualityMap[k],
-  }));
+    const qualityDistribution = Object.keys(qualityMap).map(k => ({
+      name: k,
+      value: qualityMap[k],
+    }));
 
 
-  const result = {
-    teamStats,
-    bookingTrend,
-    qualityDistribution,
+    const result = {
+      teamStats,
+      bookingTrend,
+      qualityDistribution,
   };
 
 

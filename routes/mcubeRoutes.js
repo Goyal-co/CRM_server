@@ -15,7 +15,7 @@ const router = express.Router();
 const MCUBE_API_KEY = process.env.MCUBE_API_KEY || '029f2e0cebd3e3473f0b4cbbaebd1ed5';
 console.log('Using MCUBE API Key:', MCUBE_API_KEY.substring(0, 6) + '...' + MCUBE_API_KEY.slice(-4));
 // For local development without ngrok, we'll use a dummy callback URL
-const CALLBACK_URL = process.env.MCUBE_CALLBACK_URL || 'https://pratham-frontend-whah.onrender.com/api/mcube-callback';
+const CALLBACK_URL = process.env.MCUBE_CALLBACK_URL || 'https://api.goyalhariyanacrm.in/api/mcube-callback';
 const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbznX9Q-zsf-Trlal1aBSn4WPngHIOeBAycoI8XrmzKUq85aNQ-Mwk0scn86ty-4gsjA/exec';
 
 // 1️⃣ Trigger MCUBE Call (Works without ngrok)
@@ -46,7 +46,7 @@ router.get('/trigger-call', async (req, res) => {
   const customerNumber = customer.replace('+91', '');
 
   // Use Render backend as callback URL
-  const callbackUrl = 'https://pratham-server.onrender.com/api/mcube-callback';
+  const callbackUrl = 'https://api.goyalhariyanacrm.in/api/mcube-callback';
   const apiUrl = `https://mcube.vmc.in/api/outboundcall?apikey=${MCUBE_API_KEY}&exenumber=${encodeURIComponent(agentNumber)}&custnumber=${encodeURIComponent(customerNumber)}&url=${encodeURIComponent(callbackUrl)}`;
 
   // 🐞 Debug: Print full MCUBE API URL (do not mask API key for troubleshooting)
@@ -170,7 +170,7 @@ router.post('/mcube-callback', async (req, res) => {
     // Automatically trigger call analysis after saving callback
     try {
       // Use the deployed backend URL for analysis endpoint
-      const analysisEndpoint = process.env.ANALYSIS_API_URL || 'https://pratham-server.onrender.com/api/analyze-call';
+      const analysisEndpoint = process.env.ANALYSIS_API_URL || 'https://api.goyalhariyanacrm.in/api/analyze-call';
       await axios.post(analysisEndpoint, {
         recordingUrl: data.filename,
         callId: data.callid,
