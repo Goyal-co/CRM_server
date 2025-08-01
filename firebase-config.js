@@ -1,23 +1,21 @@
-// Firebase configuration for backend
-import { initializeApp } from 'firebase/app';
-import { getStorage } from 'firebase/storage';
-import { getFirestore } from 'firebase/firestore';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyAkmFLpWPDcjkzK3tYE0g0gNx4fxU74V8c",
-  authDomain: "test-539e9.firebaseapp.com",
-  projectId: "test-539e9",
-  storageBucket: "test-539e9.firebasestorage.app",
-  messagingSenderId: "1029641902756",
-  appId: "1:1029641902756:web:3d5523acfaf6133954a431",
-  measurementId: "G-NXL1RJJD0M"
+  apiKey: "AIzaSyC4XNbz-mV18YNuNWgWPrPAzDg9y6Il93s",
+  authDomain: "titan-crm-99121.firebaseapp.com",
+  projectId: "titan-crm-99121",
+  storageBucket: "titan-crm-99121.firebasestorage.app",
+  messagingSenderId: "572699140517",
+  appId: "1:572699140517:web:4609cd371a8085e169484c",
+  measurementId: "G-NDQ1D7G09K"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Initialize Firebase Storage and Firestore
-export const storage = getStorage(app);
-export const db = getFirestore(app);
-
-export default app; 
+const analytics = getAnalytics(app);
