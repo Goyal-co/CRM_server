@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-const MCUBE_API_KEY = process.env.MCUBE_API_KEY || '029f2e0cebd3e3473f0b4cbbaebd1ed5';
+const MCUBE_API_KEY = process.env.MCUBE_API_KEY || 'ed7a8ad1a647300827e1564e43ad1d7a';
 console.log('Using MCUBE API Key:', MCUBE_API_KEY.substring(0, 6) + '...' + MCUBE_API_KEY.slice(-4));
 // For local development without ngrok, we'll use a dummy callback URL
 const CALLBACK_URL = process.env.MCUBE_CALLBACK_URL || 'https://api.goyalhariyanacrm.in/api/mcube-callback';
