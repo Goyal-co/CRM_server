@@ -1,11 +1,3 @@
-// import dotenv from 'dotenv';
-// dotenv.config(); // 🔐 Load .env variables before anything else
-
-// import express from 'express';  
-// import mongoose from 'mongoose';
-// import cors from 'cors';
-// import path from 'path';
-// import { fileURLToPath } from 'url';
 
 // // ✅ Import CJS-compatible routes
 // import leadRoutes from './routes/leadRoutes.js';
@@ -68,13 +60,25 @@
 
 
 import dotenv from 'dotenv';
-dotenv.config(); // 🔐 Load .env variables
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// 🔐 Load .env variables
+// Initialize __filename and __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+// Debug: Log environment variables (be careful with sensitive data in production)
+console.log('Environment variables loaded:');
+console.log('MONGO_URI:', process.env.MONGO_URI ? '✅ Loaded' : '❌ Missing');
+console.log('MCUBE_API_KEY:', process.env.MCUBE_API_KEY ? '✅ Loaded' : '❌ Missing');
 
 import express from 'express';  
 import mongoose from 'mongoose';
 import cors from 'cors';
-import path from 'path'; // ✅ Corrected import: Use built-in Node.js path module
-import { fileURLToPath } from 'url';
 import adminStatsRoutes from './routes/adminStatsRoutes.js';
 
 // ✅ Import CJS-compatible routes
@@ -86,9 +90,6 @@ import mcubeRoutes from './routes/mcubeRoutes.js';
 import fbWebhookRoutes from './routes/fbWebhook.js';
 import magicbricksRoutes from './routes/magicbricksRoutes.js';
 // import twilioRoutes from './routes/twilioRoutes.js'; // ❌ Commented out: Replaced Twilio with MCUBE
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 

@@ -502,7 +502,7 @@ router.post('/download-recording', async (req, res) => {
       try {
         console.log(`[${new Date().toISOString()}] Triggering AI analysis with Firebase recording: ${firebaseRecordingUrl}`);
         
-        await axios.post(`${process.env.CALL_ANALYSIS_API || 'http://localhost:5000/api/call-analysis'}`, {
+        await axios.post(`${process.env.CALL_ANALYSIS_API || 'https://api.goyalhariyanacrm.in/api/call-analysis'}`, {
           leadId: leadId,
           recordingUrl: firebaseRecordingUrl,
           callId: callId,

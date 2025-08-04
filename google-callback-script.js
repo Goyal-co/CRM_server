@@ -90,7 +90,7 @@ function extractLeadsFromGmail() {
         lead.phone,
         lead.city
       ]]);
-      
+     
       newRow++;
       message.markRead();
     });
@@ -222,12 +222,6 @@ function onEdit(e) {
 }
 
 
-
-
-
-
-
-
 function assignUnassignedLeadsWithTeamStatus() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
   const teamSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Team Status");
@@ -312,8 +306,6 @@ function markCallDelays() {
     }
   }
 }
-
-
 
 
 function logBreak() {
@@ -452,9 +444,6 @@ function updatePerformanceTracker() {
   }
 }
 
-
-
-
 function sendAssignmentEmail(row) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
   if (!sheet || !row || isNaN(row)) {
@@ -512,27 +501,22 @@ Titans
 }
 
 
-
-
 function doGet(e) {
   try {
     const action = e.parameter.action || "getLeads";
 
 
     const actionsThatDontNeedEmail = [
-  "addManualLead",
-  "updateLead",
-  "getTeamStatus",
-  "updateTeamStatus",
-  "getAdminStats",
-  "updateManualLead",
-  "getLeaderboard",
-  "getDailyTip",
-  "getProjectInfo"  // ✅ Add this line
-];
-
-
-
+    "addManualLead",
+    "updateLead",
+    "getTeamStatus",
+    "updateTeamStatus",
+    "getAdminStats",
+    "updateManualLead",
+    "getLeaderboard",
+    "getDailyTip",
+    "getProjectInfo"  // ✅ Add this line
+    ];
 
     if (!e.parameter.email && !actionsThatDontNeedEmail.includes(action)) {
       throw new Error("Missing email parameter");
@@ -547,25 +531,88 @@ function doGet(e) {
     if (action === "getLeads") {
       const sheet = ss.getSheetByName("Leads");
       const data = sheet.getDataRange().getValues();
-      const headers = data[0];
+      const headers = data[0].map(h => h.toString().trim());
       const rows = data.slice(1);
 
-
-      const assignedEmailCol = headers.indexOf("Assigned Email");
-      if (assignedEmailCol === -1) throw new Error("Column 'Assigned Email' not found");
-
-
-      const filtered = rows.filter(row =>
-        (row[assignedEmailCol] || "").toLowerCase().includes(email)
-      );
-
-
-      const result = filtered.map(row => {
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = row[i]);
-        return obj;
+      // Create a map of normalized header names to column indices
+      const headerMap = {};
+      headers.forEach((header, index) => {
+        if (header) {
+          const normalizedHeader = header
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          headerMap[normalizedHeader] = index;
+        }
       });
 
+      // Helper function to get column index by possible header names
+      const getColIndex = (possibleHeaders) => {
+        for (const header of possibleHeaders) {
+          const normalized = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (headerMap[normalized] !== undefined) {
+            return headerMap[normalized];
+          }
+        }
+        return -1;
+      };
+
+      // Find the assigned email column (try multiple variations)
+      const assignedEmailCol = getColIndex(["Assigned Email", "AssignedEmail", "Email"]);
+      if (assignedEmailCol === -1) {
+        console.error("Could not find 'Assigned Email' column in sheet");
+        return ContentService.createTextOutput(JSON.stringify({ error: "Could not find 'Assigned Email' column in sheet" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      // Filter rows by email (case-insensitive)
+      const filtered = rows.filter(row => {
+        const rowEmail = (row[assignedEmailCol] || "").toString().toLowerCase().trim();
+        return rowEmail === email.toLowerCase().trim();
+      });
+
+      // Map rows to objects with consistent field names
+      const result = filtered.map(row => {
+        const obj = {};
+        
+        // Map all columns with their original headers
+        headers.forEach((h, i) => {
+          obj[h] = row[i];
+        });
+        
+        // Ensure all expected fields exist with proper casing
+        const fieldMappings = [
+          { target: 'Called?', sources: ['Called?', 'Called', 'Status'] },
+          { target: 'Site Visit?', sources: ['Site Visit?', 'SiteVisit', 'Site Visit'] },
+          { target: 'Booked?', sources: ['Booked?', 'Booked', 'Status'] },
+          { target: 'Lead Quality', sources: ['Lead Quality', 'Quality', 'LeadQuality'] },
+          { target: 'Lead ID', sources: ['Lead ID', 'ID', 'LeadID'] },
+          { target: 'Phone', sources: ['Phone', 'Phone Number', 'PhoneNumber', 'Mobile'] },
+          { target: 'Project', sources: ['Project', 'Project Name', 'ProjectName'] },
+          { target: 'Name', sources: ['Name', 'Customer Name', 'CustomerName'] },
+          { target: 'Assigned To', sources: ['Assigned To', 'AssignedTo', 'Assignee'] },
+          { target: 'Assigned Email', sources: ['Assigned Email', 'AssignedEmail', 'Email'] }
+        ];
+        
+        // Add feedback fields
+        for (let i = 1; i <= 5; i++) {
+          fieldMappings.push({
+            target: `Feedback ${i}`,
+            sources: [`Feedback ${i}`, `Feedback${i}`, `FB${i}`, `Comment ${i}`, `Comment${i}`]
+          });
+        }
+        
+        // Apply field mappings
+        fieldMappings.forEach(mapping => {
+          const colIndex = getColIndex(mapping.sources);
+          if (colIndex >= 0 && row[colIndex] !== undefined && row[colIndex] !== '') {
+            obj[mapping.target] = row[colIndex];
+          } else if (!obj[mapping.target]) {
+            obj[mapping.target] = ''; // Ensure field exists even if empty
+          }
+        });
+        
+        return obj;
+      });
 
       return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
     }
@@ -713,30 +760,29 @@ function doGet(e) {
 
 
     // 📋 Manual Leads - Fetch
-  if (action === "getManualLeads") {
-  const sheet = ss.getSheetByName("Manual Leads");
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
+    if (action === "getManualLeads") {
+      const sheet = ss.getSheetByName("Manual Leads");
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      const rows = data.slice(1);
 
 
       const result = rows
         .filter(row => row.length > 1 && row[headers.indexOf("Assignee")].toLowerCase() === email)
-      .map(row => {
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = row[i]);
-        return obj;
-      });
+        .map(row => {
+          const obj = {};
+          headers.forEach((h, i) => obj[h] = row[i]);
+          return obj;
+        });
 
 
-  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-}
+      return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+    }
 
 
     // 📋 Manual Leads - Add
     if (action === "addManualLead") {
       const sheet = ss.getSheetByName("Manual Leads");
-
 
       const leadId = e.parameter.leadId || "ML" + new Date().getTime().toString().slice(-6);
       const project = e.parameter.project || "";
@@ -746,81 +792,392 @@ function doGet(e) {
       const assignee = e.parameter.email || "";
       const siteVisit = e.parameter.siteVisit || "";
       const booked = e.parameter.booked || "";
-      const feedback = e.parameter.feedback || "";
+      const feedback1 = e.parameter.feedback1 || "";
+      const feedback2 = e.parameter.feedback2 || "";
+      const feedback3 = e.parameter.feedback3 || "";
+      const feedback4 = e.parameter.feedback4 || "";
+      const feedback5 = e.parameter.feedback5 || "";
+      const leadQuality = e.parameter.leadQuality || "";
 
+      // Get headers to find column indices
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const headerMap = {};
+      headers.forEach((header, index) => {
+        headerMap[header.trim()] = index + 1; // +1 because getRange is 1-based
+      });
 
-      sheet.appendRow([
-        leadId,
-        project,
-        name,
-        phone,
-        lookingFor,
-        assignee,
-        siteVisit,
-        booked,
-        feedback
-      ]);
+      // Create a new row with empty values
+      const newRow = new Array(headers.length).fill("");
+      
+      // Helper function to find the best matching header
+      const getHeaderIndex = (possibleHeaders) => {
+        for (const header of possibleHeaders) {
+          if (headerMap[header] !== undefined) {
+            return headerMap[header] - 1; // Convert to 0-based index
+          }
+        }
+        return -1;
+      };
 
+      // Map the values to the correct columns with flexible header matching
+      const leadIdIndex = getHeaderIndex(["Lead ID", "LeadID", "ID"]);
+      if (leadIdIndex !== -1) newRow[leadIdIndex] = leadId;
+      
+      const projectIndex = getHeaderIndex(["Project", "Project Name", "ProjectName"]);
+      if (projectIndex !== -1) newRow[projectIndex] = project;
+      
+      const nameIndex = getHeaderIndex(["Name", "Customer Name", "CustomerName", "Client Name", "ClientName"]);
+      if (nameIndex !== -1) newRow[nameIndex] = name;
+      
+      // Handle phone number with multiple possible header names
+      const phoneIndex = getHeaderIndex(["Phone", "Phone Number", "PhoneNumber", "Mobile", "Contact Number"]);
+      if (phoneIndex !== -1) newRow[phoneIndex] = phone;
+      
+      // Handle "Looking For" field with multiple possible header names
+      const lookingForIndex = getHeaderIndex(["Looking For", "LookingFor", "Looking For?", "Requirement", "Interested In", "InterestedIn"]);
+      if (lookingForIndex !== -1) {
+        newRow[lookingForIndex] = lookingFor;
+        Logger.log(`Looking For field found at index ${lookingForIndex} with value: ${lookingFor}`);
+      } else {
+        Logger.log(`Looking For column not found. Available headers: ${headers.join(', ')}`);
+      }
+      if (headerMap["Assignee"]) newRow[headerMap["Assignee"] - 1] = assignee;
+      if (headerMap["Site Visit"] || headerMap["SiteVisit"] || headerMap["Site Visit?"]) {
+        const siteVisitCol = headerMap["Site Visit"] || headerMap["SiteVisit"] || headerMap["Site Visit?"];
+        newRow[siteVisitCol - 1] = siteVisit;
+      }
+      if (headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"]) {
+        const bookedCol = headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"];
+        newRow[bookedCol - 1] = booked;
+      }
+      if (headerMap["Feedback 1"] || headerMap["Feedback1"]) {
+        const feedback1Col = headerMap["Feedback 1"] || headerMap["Feedback1"];
+        newRow[feedback1Col - 1] = feedback1;
+      }
+      if (headerMap["Feedback 2"] || headerMap["Feedback2"]) {
+        const feedback2Col = headerMap["Feedback 2"] || headerMap["Feedback2"];
+        newRow[feedback2Col - 1] = feedback2;
+      }
+      if (headerMap["Feedback 3"] || headerMap["Feedback3"]) {
+        const feedback3Col = headerMap["Feedback 3"] || headerMap["Feedback3"];
+        newRow[feedback3Col - 1] = feedback3;
+      }
+      if (headerMap["Feedback 4"] || headerMap["Feedback4"]) {
+        const feedback4Col = headerMap["Feedback 4"] || headerMap["Feedback4"];
+        newRow[feedback4Col - 1] = feedback4;
+      }
+      if (headerMap["Feedback 5"] || headerMap["Feedback5"]) {
+        const feedback5Col = headerMap["Feedback 5"] || headerMap["Feedback5"];
+        newRow[feedback5Col - 1] = feedback5;
+      }
+      if (headerMap["Lead Quality"] || headerMap["LeadQuality"] || headerMap["Quality"]) {
+        const qualityCol = headerMap["Lead Quality"] || headerMap["LeadQuality"] || headerMap["Quality"];
+        newRow[qualityCol - 1] = leadQuality;
+      }
+      if (headerMap["Date"] || headerMap["Created At"]) {
+        const dateCol = headerMap["Date"] || headerMap["Created At"];
+        newRow[dateCol - 1] = new Date();
+      }
+
+      // Add the new row
+      sheet.appendRow(newRow);
 
       return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 📋 Manual Leads - Get
+    if (action === "getManualLeads") {
+      const sheet = ss.getSheetByName("Manual Leads");
+      if (!sheet) {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          error: 'Manual Leads sheet not found' 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      const data = sheet.getDataRange().getValues();
+      if (data.length <= 1) {
+        return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      const headers = data[0].map(header => header.toString().trim());
+      const email = e.parameter.email;
+      const isAdmin = email === "admin@example.com"; // Replace with your admin email check
+      
+      // Map the data to objects with proper headers
+      const leads = [];
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (row.length === 0) continue; // Skip empty rows
+        
+        const lead = {};
+        headers.forEach((header, index) => {
+          // Only include the field if it has a header and the value exists
+          if (header && row[index] !== undefined) {
+            lead[header] = row[index];
+          }
+        });
+        
+        // Only include leads assigned to the current user or all leads for admin
+        if (isAdmin || lead["Assignee"] === email) {
+          leads.push(lead);
+        }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify(leads))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 📋 Manual Leads - Update
+    if (action === "updateManualLead") {
+      const sheet = ss.getSheetByName("Manual Leads");
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      const leadId = e.parameter.leadId;
+      const updates = JSON.parse(e.parameter.updates || '{}');
+      
+      // Find the row with the matching lead ID
+      let rowIndex = -1;
+      const idColumnIndex = headers.findIndex(header => 
+        header.toString().toLowerCase() === 'lead id' || 
+        header.toString().toLowerCase() === 'leadid' ||
+        header.toString().toLowerCase() === 'id'
+      );
+      
+      if (idColumnIndex === -1) {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          error: 'Could not find Lead ID column in the sheet' 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      // Find the row with the matching lead ID (skip header row)
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][idColumnIndex] === leadId) {
+          rowIndex = i + 1; // +1 because getRange is 1-based
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          error: 'Lead ID not found' 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      // Create a map of normalized header names to their column indices
+      const headerMap = {};
+      headers.forEach((header, index) => {
+        if (header) {
+          // Normalize header name by removing spaces, special chars, and converting to lowercase
+          const normalizedHeader = header.toString()
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          headerMap[normalizedHeader] = index;
+        }
+      });
+      
+      // Update each field in the updates object
+      Object.entries(updates).forEach(([field, value]) => {
+        // Normalize the field name to match the header format
+        const normalizedField = field
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+          
+        // Special handling for feedback fields (Feedback1, Feedback2, etc.)
+        const feedbackMatch = normalizedField.match(/^feedback(\d+)$/);
+        if (feedbackMatch) {
+          const feedbackNum = feedbackMatch[1];
+          // Try both "Feedback X" and "FeedbackX" formats
+          const possibleHeaders = [
+            `feedback${feedbackNum}`,
+            `feedback ${feedbackNum}`
+          ];
+          
+          for (const header of possibleHeaders) {
+            const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (headerMap[normalizedHeader] !== undefined) {
+              sheet.getRange(rowIndex, headerMap[normalizedHeader] + 1).setValue(value);
+              break;
+            }
+          }
+          return;
+        }
+        
+        // Special handling for site visit date
+        if (normalizedField.includes('sitevisitdate') || normalizedField.includes('sitevisit')) {
+          const possibleHeaders = ['Site Visit Date', 'SiteVisitDate', 'Site Visit', 'SiteVisit'];
+          for (const header of possibleHeaders) {
+            const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (headerMap[normalizedHeader] !== undefined) {
+              sheet.getRange(rowIndex, headerMap[normalizedHeader] + 1).setValue(value);
+              break;
+            }
+          }
+          return;
+        }
+        
+        // Handle other fields
+        if (headerMap[normalizedField] !== undefined) {
+          sheet.getRange(rowIndex, headerMap[normalizedField] + 1).setValue(value);
+        } else {
+          console.warn(`Column not found for field: ${field}`);
+        }
+      });
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        success: true 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
 
 
     // ✅ Auto Leads - Update with Feedback Time Logic
     if (action === "updateLead") {
-      const sheet = ss.getSheetByName("Leads");
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
-      const rows = data.slice(1);
+      try {
+        const sheet = ss.getSheetByName("Leads");
+        const data = sheet.getDataRange().getValues();
+        const headers = data[0].map(h => h.toString().trim());
+        const rows = data.slice(1);
 
+        // Create a map of normalized header names to column indices
+        const headerMap = {};
+        headers.forEach((header, index) => {
+          if (header) {
+            const normalizedHeader = header
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '');
+            headerMap[normalizedHeader] = index;
+          }
+        });
 
-      const leadId = e.parameter.leadId;
-      const rowIndex = rows.findIndex(row => row[0] === leadId);
-      if (rowIndex === -1) {
-        return ContentService.createTextOutput(JSON.stringify({ error: "Lead ID not found" })).setMimeType(ContentService.MimeType.JSON);
-      }
+        // Helper function to find column index by possible header names
+        const getColIndex = (possibleHeaders) => {
+          for (const header of possibleHeaders) {
+            const normalized = header.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (headerMap[normalized] !== undefined) {
+              return headerMap[normalized];
+            }
+          }
+          return -1;
+        };
 
-
-      const rowNum = rowIndex + 2;
-      const now = new Date();
-
-
-      const updates = {
-        "Called?": e.parameter.called,
-        "Site Visit?": e.parameter.siteVisit,
-        "Booked?": e.parameter.booked,
-        "Lead Quality": e.parameter.quality
-      };
-
-
-      for (const [key, value] of Object.entries(updates)) {
-        const col = headers.indexOf(key) + 1;
-        if (col > 0) {
-          sheet.getRange(rowNum, col).setValue(value);
-        }
-      }
-
-
-      for (let i = 1; i <= 5; i++) {
-        const fbKey = `Feedback ${i}`;
-        const timeKey = `Time ${i}`;
-        const feedbackValue = e.parameter[`feedback${i}`];
-
-
-        const fbCol = headers.indexOf(fbKey) + 1;
-        const timeCol = headers.indexOf(timeKey) + 1;
-
-
-        if (fbCol > 0) {
-          sheet.getRange(rowNum, fbCol).setValue(feedbackValue);
-          if (timeCol > 0 && feedbackValue) {
-            sheet.getRange(rowNum, timeCol).setValue(now);
+        // Find the lead by ID (checking multiple possible ID columns)
+        const leadId = e.parameter.leadId;
+        let rowIndex = -1;
+        
+        // Try multiple possible ID column names
+        const idColumns = [
+          'Lead ID', 'ID', 'LeadID', 'LeadId', 'leadid', 'lead_id', 'lead id'
+        ];
+        
+        for (const idCol of idColumns) {
+          const colIndex = getColIndex([idCol]);
+          if (colIndex >= 0) {
+            rowIndex = rows.findIndex(row => 
+              row[colIndex] && row[colIndex].toString() === leadId.toString()
+            );
+            if (rowIndex !== -1) break;
           }
         }
+        
+        // If still not found, try the first column as fallback
+        if (rowIndex === -1) {
+          rowIndex = rows.findIndex(row => 
+            row[0] && row[0].toString() === leadId.toString()
+          );
+        }
+        
+        if (rowIndex === -1) {
+          console.error(`Lead ID ${leadId} not found in sheet`);
+          return ContentService.createTextOutput(JSON.stringify({ 
+            error: `Lead ID ${leadId} not found in sheet` 
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+
+        const rowNum = rowIndex + 2; // +2 because data is 0-based and we have a header row
+        const now = new Date();
+        let updatesMade = false;
+
+        // Field mapping configuration
+        const fieldMappings = [
+          { param: 'called', possibleHeaders: ['Called?', 'Called', 'Status'] },
+          { param: 'siteVisit', possibleHeaders: ['Site Visit?', 'SiteVisit', 'Site Visit', 'SiteVisit'] },
+          { param: 'booked', possibleHeaders: ['Booked?', 'Booked', 'Status'] },
+          { param: 'quality', possibleHeaders: ['Lead Quality', 'Quality', 'LeadQuality'] },
+          { param: 'leadQuality', possibleHeaders: ['Lead Quality', 'Quality', 'LeadQuality'] },
+          { param: 'status', possibleHeaders: ['Status', 'Lead Status', 'LeadStatus'] },
+          { param: 'notes', possibleHeaders: ['Notes', 'Remarks', 'Comments'] }
+        ];
+
+        // Process each field update
+        for (const field of fieldMappings) {
+          const value = e.parameter[field.param];
+          if (value !== undefined && value !== null && value !== '') {
+            const colIndex = getColIndex(field.possibleHeaders);
+            if (colIndex >= 0) {
+              sheet.getRange(rowNum, colIndex + 1).setValue(value);
+              updatesMade = true;
+              console.log(`Updated ${field.param} to ${value} in column ${headers[colIndex]}`);
+            } else {
+              console.warn(`Column not found for ${field.param}, tried: ${field.possibleHeaders.join(', ')}`);
+            }
+          }
+        }
+
+        // Update feedback fields
+        for (let i = 1; i <= 5; i++) {
+          const feedbackValue = e.parameter[`feedback${i}`];
+          if (feedbackValue !== undefined && feedbackValue !== '') {
+            // Try multiple possible feedback column names
+            const feedbackCol = getColIndex([
+              `Feedback ${i}`, `Feedback${i}`, `FB${i}`, `Comment ${i}`, `Comment${i}`,
+              `Feedback ${i} Notes`, `Feedback${i}Notes`, `Note ${i}`, `Note${i}`
+            ]);
+            
+            if (feedbackCol >= 0) {
+              sheet.getRange(rowNum, feedbackCol + 1).setValue(feedbackValue);
+              updatesMade = true;
+              console.log(`Updated Feedback ${i} to: ${feedbackValue}`);
+              
+              // Update the corresponding time field if it exists
+              const timeCol = getColIndex([
+                `Time ${i}`, `Time${i}`, `Feedback ${i} Time`, `Feedback${i}Time`,
+                `Updated ${i}`, `Updated${i}`, `Timestamp ${i}`, `Timestamp${i}`
+              ]);
+              
+              if (timeCol >= 0) {
+                sheet.getRange(rowNum, timeCol + 1).setValue(now);
+                console.log(`Updated Time ${i} to: ${now}`);
+              }
+            } else {
+              console.warn(`Feedback ${i} column not found`);
+            }
+          }
+        }
+
+        // Force sheet update if changes were made
+        if (updatesMade) {
+          SpreadsheetApp.flush();
+          console.log(`Successfully updated lead ${leadId}`);
+          return ContentService.createTextOutput(JSON.stringify({ 
+            success: true,
+            message: `Successfully updated lead ${leadId}`
+          })).setMimeType(ContentService.MimeType.JSON);
+        } else {
+          console.warn(`No updates were made to lead ${leadId}`);
+          return ContentService.createTextOutput(JSON.stringify({ 
+            success: false,
+            message: 'No updates were made - no valid fields to update'
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      } catch (error) {
+        console.error('Error in updateLead:', error);
+        return ContentService.createTextOutput(JSON.stringify({
+          success: false,
+          error: error.message || 'Unknown error occurred',
+          stack: error.stack
+        })).setMimeType(ContentService.MimeType.JSON);
       }
-
-
-      return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
     }
 
 
@@ -828,46 +1185,36 @@ function doGet(e) {
 
      // 📊 Admin Dashboard Analytics
 if (action === "getAdminStats") {
-  Logger.log("getAdminStats triggered with params: " + JSON.stringify(e.parameter));
-
-
   const project = e.parameter.project || "";
   const member = e.parameter.member || "";
   const dateRange = e.parameter.dateRange || "";
 
-
   const sheet = ss.getSheetByName("Leads");
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    
-
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const leads = data.slice(1);
   const idx = (col) => headers.indexOf(col);
 
+  // === Get Manual Leads
+  const manualSheet = ss.getSheetByName("Manual Leads");
+  const manualData = manualSheet.getDataRange().getValues();
+  const manualHeaders = manualData[0];
+  const manualRows = manualData.slice(1);
+  const manualIdx = (col) => manualHeaders.indexOf(col);
 
-  // Validate required columns exist
-  const requiredCols = ["Assigned Time", "Project", "Assigned Email", "Assigned To", "Called?", "Site Visit?", "Booked?", "Call Delay?", "Lead Quality"];
-  for (let col of requiredCols) {
-    if (idx(col) === -1) {
-      throw new Error(`Missing required column: ${col}`);
-    }
-  }
-
-
+  // === Filter auto leads (date/project/member logic)
   const now = new Date();
   let fromDate = new Date("2000-01-01");
-
 
   if (dateRange === "7d") fromDate.setDate(now.getDate() - 7);
   else if (dateRange === "30d") fromDate.setDate(now.getDate() - 30);
   else if (dateRange === "thisMonth") fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
-
-  const leads = data.slice(1).filter(row => {
+  const filteredAuto = leads.filter(row => {
     const timeStr = row[idx("Assigned Time")];
     if (!timeStr) return false;
     const assignedTime = new Date(timeStr);
     if (isNaN(assignedTime)) return false;
-
 
     const projMatch = !project || row[idx("Project")] === project;
     const memberMatch = !member || row[idx("Assigned To")] === member;
@@ -875,77 +1222,256 @@ if (action === "getAdminStats") {
     return projMatch && memberMatch && dateMatch;
   });
 
+  const filteredManual = manualRows.filter(row => {
+    const projMatch = !project || row[manualIdx("Project")] === project;
+    const memberMatch = !member || row[manualIdx("Assignee")] === member;
+    return projMatch && memberMatch; // ❗No time filter since "Assigned Time" is missing
+  });
 
-  Logger.log(`Filtered Leads Count: ${leads.length}`);
+  // === Initialize maps with all quality types including RNR
+  const teamMap = {};
+  const qualityMap = { WIP: 0, Warm: 0, Cold: 0, RNR: 0, Invalid: 0, Junk: 0 };
+  const teamQualityMap = {};
+  
+  // Helper function to normalize quality values
+  const normalizeQuality = (quality) => {
+    if (!quality) return null;
+    const q = quality.toString().trim().toLowerCase();
+    if (q === 'wip') return 'WIP';
+    if (q === 'warm') return 'Warm';
+    if (q === 'cold') return 'Cold';
+    if (q === 'rnr' || q === 'ring no reply' || q === 'ring no response') return 'RNR';
+    if (q === 'invalid') return 'Invalid';
+    if (q === 'junk') return 'Junk';
+    return null;
+  };
 
-
-    const teamMap = {};
-
-
-  leads.forEach(row => {
+  // === Count auto stats
+  filteredAuto.forEach(row => {
     const name = row[idx("Assigned To")] || "Unknown";
-      if (!teamMap[name]) {
-        teamMap[name] = {
-          name,
-          leads: 0,
-          called: 0,
-          siteVisits: 0,
-          bookings: 0,
-          callDelay: 0,
-      };
-    }
-
-
-      teamMap[name].leads++;
+    if (!teamMap[name]) teamMap[name] = {
+      name, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0
+    };
+    teamMap[name].leads++;
+    teamMap[name].autoLeads++;
     if (row[idx("Called?")] === "Yes") teamMap[name].called++;
     if (row[idx("Site Visit?")] === "Yes") teamMap[name].siteVisits++;
     if (row[idx("Booked?")] === "Yes") teamMap[name].bookings++;
     if (row[idx("Call Delay?")] === "Yes") teamMap[name].callDelay++;
+
+    // Process Lead Quality
+    const rawQuality = row[idx("Lead Quality")] || "";
+    const normalizedQuality = normalizeQuality(rawQuality);
+    
+    if (normalizedQuality) {
+      // Update quality map
+      qualityMap[normalizedQuality] = (qualityMap[normalizedQuality] || 0) + 1;
+      
+      // Update team quality map
+      if (!teamQualityMap[name]) teamQualityMap[name] = {};
+      const key = `auto${normalizedQuality}`; // autoWIP, autoWarm, autoRNR, etc.
+      teamQualityMap[name][key] = (teamQualityMap[name][key] || 0) + 1;
+      
+      // Log for debugging
+      console.log(`Processed auto lead quality: ${rawQuality} -> ${normalizedQuality} for ${name}`);
+    } else if (rawQuality) {
+      console.warn(`Unrecognized quality value: ${rawQuality} for lead assigned to ${name}`);
+    }
+
+
+
   });
 
+  // === Count manual stats with proper quality handling
+  filteredManual.forEach(row => {
+    const name = row[manualIdx("Assignee")] || "Unknown";
+    if (!teamMap[name]) {
+      teamMap[name] = {
+        name, 
+        leads: 0, 
+        called: 0, 
+        siteVisits: 0, 
+        bookings: 0, 
+        callDelay: 0, 
+        autoLeads: 0, 
+        manualLeads: 0
+      };
+    }
+    teamMap[name].leads++;
+    teamMap[name].manualLeads++;
 
-    const teamStats = Object.values(teamMap);
+    // Process Lead Quality for manual leads
+    const rawQuality = row[manualIdx("Lead Quality")] || "";
+    const normalizedQuality = normalizeQuality(rawQuality);
+    
+    if (normalizedQuality) {
+      if (!teamQualityMap[name]) teamQualityMap[name] = {};
+      const key = `manual${normalizedQuality}`; // manualWIP, manualWarm, manualRNR, etc.
+      teamQualityMap[name][key] = (teamQualityMap[name][key] || 0) + 1;
+      
+      // Also update the quality map for the pie chart
+      qualityMap[normalizedQuality] = (qualityMap[normalizedQuality] || 0) + 1;
+      
+      console.log(`Processed manual lead quality: ${rawQuality} -> ${normalizedQuality} for ${name}`);
+    } else if (rawQuality) {
+      console.warn(`Unrecognized quality value in manual leads: ${rawQuality} for ${name}`);
+    }
+  });
+
+  // Process team stats with all quality types
+  const teamStats = Object.values(teamMap).map(stat => {
+    const qualities = teamQualityMap[stat.name] || {};
+    
+    // Auto lead qualities
+    const autoWIP = qualities.autoWIP || 0;
+    const autoWarm = qualities.autoWarm || 0;
+    const autoCold = qualities.autoCold || 0;
+    const autoRNR = qualities.autoRNR || 0;
+    const autoInvalid = qualities.autoInvalid || 0;
+    const autoJunk = qualities.autoJunk || 0;
+    
+    // Manual lead qualities
+    const manualWIP = qualities.manualWIP || 0;
+    const manualWarm = qualities.manualWarm || 0;
+    const manualCold = qualities.manualCold || 0;
+    const manualRNR = qualities.manualRNR || 0;
+    const manualInvalid = qualities.manualInvalid || 0;
+    const manualJunk = qualities.manualJunk || 0;
+    
+    // Calculate score (you can adjust weights as needed)
+    const score = (stat.bookings || 0) * 100
+                + (stat.siteVisits || 0) * 10
+                + (autoWarm + manualWarm) * 2  // Reward warm leads
+                + (autoWIP + manualWIP) * 1;   // Reward WIP leads
+
+  return {
+    ...stat,
+    // Auto lead metrics
+    autoWIP,
+    autoWarm,
+    autoCold,
+    autoRNR,
+    autoInvalid,
+    autoJunk,
+    
+    // Manual lead metrics
+    manualWIP,
+    manualWarm,
+    manualCold,
+    manualRNR,
+    manualInvalid,
+    manualJunk,
+    
+    // Combined metrics (auto + manual)
+    totalWIP: autoWIP + manualWIP,
+    totalWarm: autoWarm + manualWarm,
+    totalCold: autoCold + manualCold,
+    totalRNR: autoRNR + manualRNR,
+    totalInvalid: autoInvalid + manualInvalid,
+    totalJunk: autoJunk + manualJunk,
+    
+    // Score
+    score
+  };
+});
 
 
-    const bookingTrendMap = {};
-  leads.forEach(row => {
+  // === Booking Trend
+  const bookingTrendMap = {};
+  filteredAuto.forEach(row => {
     const dt = new Date(row[idx("Assigned Time")]);
-      const key = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
-      if (!bookingTrendMap[key]) bookingTrendMap[key] = 0;
+    const key = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
+    if (!bookingTrendMap[key]) bookingTrendMap[key] = 0;
     if (row[idx("Booked?")] === "Yes") bookingTrendMap[key]++;
-    });
+  });
 
+  const bookingTrend = Object.keys(bookingTrendMap).map(date => ({
+    date,
+    bookings: bookingTrendMap[date]
+  }));
 
-    const bookingTrend = Object.keys(bookingTrendMap).map(date => ({
-      date,
-      bookings: bookingTrendMap[date],
-    }));
+  // === Quality distribution for dashboard cards (ensure all categories are included)
+  const allQualityTypes = ['WIP', 'Warm', 'Cold', 'RNR', 'Junk', 'Invalid'];
+  const qualityDistribution = allQualityTypes.map(type => ({
+    name: type,
+    value: qualityMap[type] || 0
+  })).filter(item => item.value > 0); // Only include categories with counts > 0
+  
+  // Log quality distribution for debugging
+  console.log('Quality Distribution:', JSON.stringify(qualityDistribution, null, 2));
 
+  // === Count global summary fields
+  const autoLeadsCount = filteredAuto.length;
+  const manualLeadsCount = filteredManual.length;
+  const totalLeadsCount = autoLeadsCount + manualLeadsCount;
 
-    const qualityMap = { WIP: 0, Warm: 0, Cold: 0 };
-  leads.forEach(row => {
-    const q = row[idx("Lead Quality")];
-    if (q && qualityMap[q] !== undefined) {
-      qualityMap[q]++;
+  // Process auto leads quality (additional pass to ensure all are counted)
+  const autoQualityCol = idx("Lead Quality");
+  filteredAuto.forEach(row => {
+    const rawQuality = row[autoQualityCol] || "";
+    const normalizedQuality = normalizeQuality(rawQuality);
+    const assignee = row[idx("Assigned To")] || "Unknown";
+    
+    if (normalizedQuality) {
+      if (!teamQualityMap[assignee]) teamQualityMap[assignee] = {};
+      const key = `auto${normalizedQuality}`;
+      teamQualityMap[assignee][key] = (teamQualityMap[assignee][key] || 0) + 1;
+      
+      // Ensure the quality is in the quality map
+      if (!qualityMap[normalizedQuality]) {
+        qualityMap[normalizedQuality] = 0;
+      }
+      qualityMap[normalizedQuality]++;
     }
   });
 
 
-    const qualityDistribution = Object.keys(qualityMap).map(k => ({
-      name: k,
-      value: qualityMap[k],
-    }));
+  // Process manual leads quality (additional pass to ensure all are counted)
+  filteredManual.forEach(row => {
+    const rawQuality = row[manualIdx("Lead Quality")] || "";
+    const normalizedQuality = normalizeQuality(rawQuality);
+    const assignee = row[manualIdx("Assignee")] || "Unknown";
+    
+    if (normalizedQuality) {
+      if (!teamQualityMap[assignee]) teamQualityMap[assignee] = {};
+      const key = `manual${normalizedQuality}`;
+      teamQualityMap[assignee][key] = (teamQualityMap[assignee][key] || 0) + 1;
+      
+      // Ensure the quality is in the quality map
+      if (!qualityMap[normalizedQuality]) {
+        qualityMap[normalizedQuality] = 0;
+      }
+      qualityMap[normalizedQuality]++;
+    }
+  });
+
+  const totalBookings = filteredAuto.filter(row => row[idx("Booked?")] === "Yes").length;
+  const totalSiteVisits = filteredAuto.filter(row => row[idx("Site Visit?")] === "Yes").length;
+  const junkCount = qualityMap["Junk"] || 0;
+  const effectiveLeads = totalLeadsCount - junkCount;
+  const conversionPercent = effectiveLeads > 0
+    ? ((totalBookings / effectiveLeads) * 100).toFixed(1)
+    : "0.0";
 
 
-    const result = {
-      teamStats,
-      bookingTrend,
-      qualityDistribution,
-  };
-
-
-  return ContentService.createTextOutput(JSON.stringify(result))
-  .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify({
+  teamStats,
+  bookingTrend,
+  qualityDistribution,
+  autoLeadsCount,
+  manualLeadsCount,
+  totalLeadsCount,
+  siteVisitsCount: totalSiteVisits,
+  bookingsCount: totalBookings,
+  conversionPercent,
+  autoInvalid: qualityMap.Invalid || 0,
+  autoJunk: qualityMap.Junk || 0,
+  manualInvalid: Object.values(teamQualityMap).reduce((sum, q) => sum + (q.manualInvalid || 0), 0),
+  manualJunk: Object.values(teamQualityMap).reduce((sum, q) => sum + (q.manualJunk || 0), 0),
+  autoWIP: qualityMap.WIP || 0,
+  autoWarm: qualityMap.Warm || 0,
+  autoCold: qualityMap.Cold || 0,
+})).setMimeType(ContentService.MimeType.JSON);
 }
 
 
@@ -973,12 +1499,6 @@ if (action === "updateManualLead") {
   sheet.getRange(rowIndex + 1, colIndex + 1).setValue(value);
   return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
 }
-
-
-
-
-
-
   if (action === "getDailyTip") {
   const sheet = ss.getSheetByName("Daily Tips");
   const data = sheet.getDataRange().getValues();
@@ -1210,16 +1730,6 @@ if (action === "getProjectInfo") {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-
-
-
-
-
-
-
-
-
     // 🔚 Default fallback
     throw new Error("Invalid action");
 
@@ -1228,26 +1738,6 @@ if (action === "getProjectInfo") {
     return ContentService.createTextOutput(JSON.stringify({ error: error.message })).setMimeType(ContentService.MimeType.JSON);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 function doPost(e) {
@@ -1288,20 +1778,3 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
