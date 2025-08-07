@@ -1,14 +1,11 @@
-// === Universal Gmail Lead Extractor ===
 function extractLeadsFromGmail() {
   const threads = GmailApp.search(
-    'is:unread subject:("Book an appointment" OR "Project enquiry" OR "Download Brochure")',
+    'is:unread subject:("Book an appointment" OR "Project enquiry" OR "Download Brochure" OR "Contact Enquiry")',
     0, 20
   );
 
-
   const sheet = SpreadsheetApp.openById("1KJB-28QU21Hg-IuavmkzdedxC8ycdguAgageFzYYfDo").getSheetByName("Leads");
   let newRow = sheet.getLastRow() + 1;
-
 
   const lastRowCheck = sheet.getLastRow();
   const existingFingerprints = lastRowCheck > 1
@@ -21,9 +18,7 @@ function extractLeadsFromGmail() {
       })
     : [];
 
-
   let insertedFingerprints = [];
-
 
   threads.forEach(thread => {
     const messages = thread.getMessages();
@@ -33,9 +28,17 @@ function extractLeadsFromGmail() {
       const htmlBody = message.getBody();
       let lead = {};
 
+      // === Format 1 ===
+      if (subject.includes("Download Brochure") && plainBody.includes("Mobile Number:")) {
+        lead.source = "Website";
+        lead.project = extract(plainBody, "For Project Enquiry:", "\n");
+        lead.name = extract(plainBody, "Name:", "\n");
+        lead.phone = extract(plainBody, "Mobile Number:", "\n");
+        lead.email = "";
+        lead.city = "";
 
-      // === Website Formats ===
-      if (subject.includes("Book an appointment") && plainBody.includes("For Project Enquiry:")) {
+      // === Format 2 ===
+      } else if (subject.includes("Book an appointment") && plainBody.includes("For Project Enquiry:")) {
         lead.source = "Website";
         lead.project = extract(plainBody, "For Project Enquiry:", "\n");
         lead.name = extract(plainBody, "Your Name:", "\n");
@@ -43,7 +46,7 @@ function extractLeadsFromGmail() {
         lead.phone = extract(plainBody, "Mobile Number:", "\n");
         lead.city = extract(plainBody, "City(Residence):", "\n");
 
-
+      // === Format 3 ===
       } else if ((subject.includes("Project enquiry") || subject.includes("Write in to us")) && plainBody.includes("E-mail ID:")) {
         lead.source = "Website";
         lead.project = extract(plainBody, "For Project Enquiry:", "\n");
@@ -52,33 +55,29 @@ function extractLeadsFromGmail() {
         lead.phone = extract(plainBody, "Mobile Number:", "\n");
         lead.city = "";
 
-
-      } else if (subject.includes("Download Brochure") && plainBody.includes("Mobile Number:")) {
+      // === ✅ Format 4 ===
+      } else if (subject.includes("Contact Enquiry") && plainBody.includes("Preferred Location:")) {
         lead.source = "Website";
-        lead.project = extract(plainBody, "For Project Enquiry:", "\n");
-        lead.name = extract(plainBody, "Name:", "\n");
+        lead.name = extract(plainBody, "Your Name:", "\n");
+        lead.email = extract(plainBody, "Your Email Id:", "\n");
         lead.phone = extract(plainBody, "Mobile Number:", "\n");
-        lead.email = "";
-        lead.city = "";
-
+        lead.city = extract(plainBody, "City Residence:", "\n");
+        const rawLocation = extract(plainBody, "Preferred Location:", "\n");
+        lead.project = rawLocation.split("[")[0].trim(); // removes [menu-879]
 
       } else {
         return;
       }
 
-
       const leadFingerprint = `${lead.name.toLowerCase().trim()}|${lead.phone}|${lead.email.toLowerCase().trim()}|${lead.project.toLowerCase().trim()}`;
-
 
       if (existingFingerprints.includes(leadFingerprint) || insertedFingerprints.includes(leadFingerprint)) {
         Logger.log("Duplicate lead detected (existing or session): " + leadFingerprint);
-        message.markRead(); // ✅ mark as read even if duplicate
+        message.markRead();
         return;
       }
 
-
       insertedFingerprints.push(leadFingerprint);
-
 
       const leadId = "LEAD-" + new Date().getTime();
       sheet.getRange(newRow, 1, 1, 7).setValues([[
@@ -90,14 +89,12 @@ function extractLeadsFromGmail() {
         lead.phone,
         lead.city
       ]]);
-     
+
       newRow++;
       message.markRead();
     });
   });
 }
-
-
 function extract(text, start, end) {
   try {
     const s = text.indexOf(start);
@@ -503,6 +500,23 @@ Titans
 
 function doGet(e) {
   try {
+    // Handle CORS preflight
+    if (e.parameter.cors === 'true') {
+      return ContentService.createTextOutput(JSON.stringify({ status: 'ok' }))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeaders({
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '3600'
+        });
+    }
+    
+    // Handle lead updates
+    if (e.parameter.updateLead) {
+      return handleLeadUpdate(e.parameter);
+    }
+    
     const action = e.parameter.action || "getLeads";
 
 
@@ -790,14 +804,15 @@ function doGet(e) {
       const phone = e.parameter.phone || "";
       const lookingFor = e.parameter.lookingFor || "";
       const assignee = e.parameter.email || "";
-      const siteVisit = e.parameter.siteVisit || "";
+      const siteVisit = e.parameter.siteVisit || "No";
+      const siteVisitDate = e.parameter.siteVisitDate || "";
       const booked = e.parameter.booked || "";
       const feedback1 = e.parameter.feedback1 || "";
       const feedback2 = e.parameter.feedback2 || "";
       const feedback3 = e.parameter.feedback3 || "";
       const feedback4 = e.parameter.feedback4 || "";
       const feedback5 = e.parameter.feedback5 || "";
-      const leadQuality = e.parameter.leadQuality || "";
+      const leadQuality = e.parameter.leadQuality || "WIP";
 
       // Get headers to find column indices
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -842,9 +857,29 @@ function doGet(e) {
         Logger.log(`Looking For column not found. Available headers: ${headers.join(', ')}`);
       }
       if (headerMap["Assignee"]) newRow[headerMap["Assignee"] - 1] = assignee;
-      if (headerMap["Site Visit"] || headerMap["SiteVisit"] || headerMap["Site Visit?"]) {
-        const siteVisitCol = headerMap["Site Visit"] || headerMap["SiteVisit"] || headerMap["Site Visit?"];
-        newRow[siteVisitCol - 1] = siteVisit;
+      // Handle Site Visit and Site Visit Date
+      const siteVisitCol = getHeaderIndex(["Site Visit", "SiteVisit", "Site Visit?"]);
+      if (siteVisitCol !== -1) {
+        newRow[siteVisitCol] = siteVisit;
+      }
+      
+      // Handle Site Visit Date
+      const siteVisitDateCol = getHeaderIndex(["Site Visit Date", "SiteVisitDate", "Visit Date", "SiteVisit Date"]);
+      if (siteVisitDateCol !== -1 && siteVisit === "Yes" && siteVisitDate) {
+        try {
+          // Try to parse and format the date
+          const date = new Date(siteVisitDate);
+          if (!isNaN(date.getTime())) {
+            // Format as YYYY-MM-DD for consistency
+            const formattedDate = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            newRow[siteVisitDateCol] = formattedDate;
+          } else {
+            newRow[siteVisitDateCol] = siteVisitDate; // Fallback to raw value
+          }
+        } catch (e) {
+          console.error("Error formatting date:", e);
+          newRow[siteVisitDateCol] = siteVisitDate; // Fallback to raw value
+        }
       }
       if (headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"]) {
         const bookedCol = headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"];
@@ -1740,41 +1775,431 @@ if (action === "getProjectInfo") {
 }
 
 
-function doPost(e) {
+function handleLeadUpdate(params) {
   try {
-    const { leadId, updates } = JSON.parse(e.postData.contents);
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
+    // Decode any URL-encoded parameters
+    const decodedParams = {};
+    for (const key in params) {
+      try {
+        // Decode the key and value
+        const decodedKey = decodeURIComponent(key);
+        let decodedValue = params[key];
+        
+        // Only decode if it's not a feedback field (to preserve + as spaces)
+        if (!decodedKey.startsWith('Feedback')) {
+          decodedValue = decodeURIComponent(decodedValue);
+        }
+        
+        decodedParams[decodedKey] = decodedValue;
+      } catch (e) {
+        console.warn(`Error decoding parameter ${key}:`, e);
+        decodedParams[key] = params[key];
+      }
+    }
+    
+    const { leadId, sheetName = 'Leads', ...updates } = decodedParams;
+    
+    // Get the spreadsheet and sheet
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      throw new Error(`Sheet "${sheetName}" not found`);
+    }
+    
+    // Get the data and headers
     const data = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const leadIdCol = headers.indexOf("Lead ID");
-
+    const headers = data[0].map(h => h.toString().trim());
+    const leadIdCol = headers.findIndex(h => h.toLowerCase() === 'lead id');
 
     if (leadIdCol === -1) throw new Error("Lead ID column not found");
 
+    // Find the row with the matching Lead ID
+    const rowIndex = data.findIndex((row, i) => i > 0 && row[leadIdCol] && row[leadIdCol].toString().trim() === leadId.toString().trim());
+    if (rowIndex === -1) throw new Error(`Lead with ID ${leadId} not found in ${sheetName}`);
 
-    const rowIndex = data.findIndex((row, i) => i > 0 && row[leadIdCol] === leadId);
-    if (rowIndex === -1) throw new Error("Lead not found");
-
-
-    const actualRow = rowIndex + 1;
-
-
+    const actualRow = rowIndex + 1; // +1 because arrays are 0-based but rows are 1-based
+    const updatesToMake = [];
+    
+    // Add debug logging
+    console.log('Processing update for sheet:', sheetName);
+    console.log('Headers:', headers);
+    console.log('Decoded updates received:', JSON.stringify(decodedParams));
+    
+    // Prepare all updates
     for (const field in updates) {
-      const colIndex = headers.indexOf(field);
+      // Skip null, undefined or empty values
+      if (updates[field] === null || updates[field] === undefined || updates[field] === '') continue;
+      
+      let colIndex = -1;
+      let fieldValue = updates[field];
+      let fieldName = field;
+      
+      // List of date fields that need special handling
+      const dateFields = [
+        'Site Visit Date', 'SiteVisitDate', 'Visit Date', 'Site Visit Date:',
+        'Date', 'Followup Date', 'Next Followup', 'Followup'
+      ];
+      
+      // Check if this is a date field
+      const isDateField = dateFields.some(dateField => 
+        field.toLowerCase().includes(dateField.toLowerCase())
+      );
+      
+      // If it's a date field, ensure it's properly formatted
+      if (isDateField && fieldValue) {
+        try {
+          // First check if it's already in YYYY-MM-DD format
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fieldValue)) {
+            // Already in correct format, use as is
+            console.log(`Using existing YYYY-MM-DD date format: '${fieldValue}' for field '${field}'`);
+          } else {
+            // Parse the date string and format it
+            const date = new Date(fieldValue);
+            if (!isNaN(date.getTime())) {
+              // Format as YYYY-MM-DD for consistency
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              fieldValue = `${year}-${month}-${day}`;
+              console.log(`Formatted date '${fieldValue}' for field '${field}'`);
+            } else {
+              console.warn(`Invalid date value '${fieldValue}' for field '${field}'`);
+              continue; // Skip this field if date is invalid
+            }
+          }
+        } catch (e) {
+          console.error(`Error formatting date '${fieldValue}' for field '${field}':`, e);
+          continue; // Skip this field if there's an error
+        }
+      }
+      
+      // Special handling for Manual Leads sheet
+      if (sheetName === 'Manual Leads') {
+        // Map field names to match the exact column names in the sheet
+        const fieldMappings = {
+          'Site Visit?': ['Site Visit?', 'SiteVisit', 'Site Visit'],
+          'Site Visit Date': ['Site Visit Date', 'SiteVisitDate', 'Visit Date', 'Site Visit Date:'],
+          'Booked?': ['Booked?', 'Booked', 'Status'],
+          'Lead Quality': ['Lead Quality', 'LeadQuality', 'Quality'],
+          'Looking For?': ['Looking For?', 'LookingFor', 'Requirement', 'Looking For'],
+          'Feedback 1': ['Feedback 1', 'Feedback1', 'Feedback 1:'],
+          'Feedback 2': ['Feedback 2', 'Feedback2', 'Feedback 2:'],
+          'Feedback 3': ['Feedback 3', 'Feedback3', 'Feedback 3:'],
+          'Feedback 4': ['Feedback 4', 'Feedback4', 'Feedback 4:'],
+          'Feedback 5': ['Feedback 5', 'Feedback5', 'Feedback 5:']
+        };
+        
+        // Special handling for site visit date - check this first
+        if ((field.toLowerCase().includes('date') || field.toLowerCase().includes('sitevisit') || 
+             field.toLowerCase() === 'site visit') && fieldValue) {
+          // Try to find the date column
+          const dateColIndex = headers.findIndex(h => {
+            const header = h.toString().trim();
+            return ['Site Visit Date', 'SiteVisitDate', 'Visit Date', 'Site Visit Date:'].some(
+              dateHeader => header.toLowerCase() === dateHeader.toLowerCase()
+            );
+          });
+          
+          if (dateColIndex !== -1) {
+            try {
+              // Parse the date - handle both YYYY-MM-DD and other formats
+              let date;
+              if (fieldValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // Already in YYYY-MM-DD format
+                date = new Date(fieldValue);
+              } else {
+                // Try parsing as ISO string or other formats
+                date = new Date(fieldValue);
+              }
+              
+              if (!isNaN(date.getTime())) {
+                // Format as YYYY-MM-DD for consistency
+                fieldValue = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+                colIndex = dateColIndex;
+                fieldName = headers[colIndex];
+                console.log(`Formatted date for ${fieldName}: ${fieldValue}`);
+                
+                // Add to updates immediately since we found the date column
+                updatesToMake.push({
+                  row: actualRow,
+                  col: colIndex + 1,
+                  value: fieldValue,
+                  field: fieldName,
+                  originalField: field
+                });
+                continue; // Skip the rest of the loop for this field
+              } else {
+                console.warn(`Invalid date format for ${field}: ${fieldValue}`);
+              }
+            } catch (e) {
+              console.error('Error formatting date:', e);
+            }
+          }
+        }
+        
+        // Handle feedback fields (Feedback 1, Feedback 2, etc.)
+        const feedbackMatch = field.match(/^feedback\s*(\d+)$/i);
+        if (feedbackMatch) {
+          const feedbackNum = feedbackMatch[1];
+          const feedbackKey = `Feedback ${feedbackNum}`;
+          
+          // Try to find the feedback column using various possible header formats
+          const feedbackColIndex = headers.findIndex(h => {
+            const header = h.toString().trim();
+            return (
+              header === feedbackKey || 
+              header === `Feedback${feedbackNum}` ||
+              header === `Feedback ${feedbackNum}:` ||
+              header.toLowerCase() === `feedback ${feedbackNum}`.toLowerCase() ||
+              header.toLowerCase() === `feedback${feedbackNum}`.toLowerCase()
+            );
+          });
+          
+          if (feedbackColIndex !== -1) {
+            colIndex = feedbackColIndex;
+            fieldName = headers[colIndex];
+            console.log(`Mapped feedback field '${field}' to '${fieldName}'`);
+            
+            // Add the feedback update immediately
+            updatesToMake.push({
+              row: actualRow,
+              col: colIndex + 1,
+              value: fieldValue,
+              field: fieldName,
+              originalField: field
+            });
+            continue; // Skip the rest of the loop for this field
+          } else {
+            console.warn(`Could not find column for feedback field: ${feedbackKey}`);
+          }
+        }
+        
+        // If we haven't found a column yet, try the field mappings
+        if (colIndex === -1) {
+          for (const [exactField, possibleFields] of Object.entries(fieldMappings)) {
+            if (possibleFields.some(f => f.toLowerCase() === field.toLowerCase()) || 
+                field.toLowerCase() === exactField.toLowerCase()) {
+              
+              const foundIndex = headers.findIndex(h => 
+                possibleFields.some(pf => 
+                  pf.toString().trim().toLowerCase() === h.toString().trim().toLowerCase()
+                )
+              );
+              
+              if (foundIndex !== -1) {
+                colIndex = foundIndex;
+                fieldName = headers[colIndex];
+                console.log(`Mapped field '${field}' to '${fieldName}'`);
+                break;
+              }
+            }
+          }
+        }
+        
+        // If column still not found, try direct case-insensitive match
+        if (colIndex === -1) {
+          const lowerField = field.toLowerCase();
+          colIndex = headers.findIndex(h => 
+            h.toString().trim().toLowerCase() === lowerField
+          );
+          if (colIndex !== -1) {
+            fieldName = headers[colIndex];
+            console.log(`Direct match found for '${field}': '${fieldName}'`);
+          }
+        }
+      } else {
+        // For other sheets, use the existing flexible matching
+        const dateColHeaders = [
+          'Site Visit Date', 
+          'Site_Visit_Date', 
+          'SiteVisitDate', 
+          'Visit Date',
+          'Site Visit',
+          'VisitDate',
+          'SiteVisit',
+          'Site Visit Date:'
+        ];
+        
+        // First try exact match
+        colIndex = headers.findIndex(h => dateColHeaders.includes(h.toString().trim()));
+        
+        // If not found, try case-insensitive match
+        if (colIndex === -1) {
+          const lowerHeaders = headers.map(h => h.toString().toLowerCase());
+          for (const dateHeader of dateColHeaders) {
+            const idx = lowerHeaders.indexOf(dateHeader.toLowerCase());
+            if (idx !== -1) {
+              colIndex = idx;
+              break;
+            }
+          }
+        }
+        
+        // Handle other fields with flexible matching
+        // First try exact match
+        colIndex = headers.findIndex(h => 
+          h.toString().trim().toLowerCase() === field.toLowerCase().trim()
+        );
+        
+        // If not found, try other common date column names
+        if (colIndex === -1) {
+          for (const header of dateColHeaders) {
+            colIndex = headers.findIndex(h => 
+              h.toString().trim().toLowerCase() === header.toLowerCase().trim()
+            );
+            if (colIndex !== -1) break;
+          }
+        }
+        
+        // If still not found, try partial match
+        if (colIndex === -1) {
+          const lowerField = field.toLowerCase();
+          colIndex = headers.findIndex(h => 
+            h.toString().toLowerCase().includes('site') && 
+            h.toString().toLowerCase().includes('date')
+          );
+        }
+        
+        // If we haven't found a column yet, try to find it by name
+        if (colIndex === -1) {
+          colIndex = headers.findIndex(h => 
+            h.toString().trim().toLowerCase() === fieldName.toString().toLowerCase()
+          );
+        }
+        
+        // If we found a column for this field, add it to the updates
+        if (colIndex !== -1) {
+          // For debugging
+          console.log(`Updating ${fieldName} (col ${colIndex + 1}) with value:`, fieldValue);
+          
+          updatesToMake.push({
+            row: actualRow,
+            col: colIndex + 1, // +1 because columns are 1-based in setValue
+            value: fieldValue
+          });
+        } else {
+          console.warn(`Column not found for field: ${fieldName}`);
+        }
+      }
+      
+      // Special handling for Manual Leads sheet
+      if (sheetName === 'Manual Leads') {
+        // Map common field variations for Manual Leads
+        const fieldMappings = {
+          'sitevisit': 'Site Visit?',
+          'site visit': 'Site Visit?',
+          'booked': 'Booked?',
+          'leadquality': 'Lead Quality',
+          'lead quality': 'Lead Quality',
+          'lookingfor': 'Looking For',
+          'looking for': 'Looking For',
+          'feedback1': 'Feedback 1',
+          'feedback 1': 'Feedback 1',
+          'feedback2': 'Feedback 2',
+          'feedback 2': 'Feedback 2',
+          'feedback3': 'Feedback 3',
+          'feedback 3': 'Feedback 3',
+          'feedback4': 'Feedback 4',
+          'feedback 4': 'Feedback 4',
+          'feedback5': 'Feedback 5',
+          'feedback 5': 'Feedback 5'
+        };
+        
+        const normalizedField = field.toLowerCase().trim();
+        if (fieldMappings[normalizedField]) {
+          colIndex = headers.findIndex(h => h === fieldMappings[normalizedField]);
+          if (colIndex !== -1) {
+            console.log(`Mapped field '${field}' to '${fieldMappings[normalizedField]}'`);
+          }
+        }
+      }
+      // Only add to updates if we have a valid column index and we haven't already added this update
       if (colIndex !== -1) {
-        sheet.getRange(actualRow + 1, colIndex + 1).setValue(updates[field]);
+        // Check if we already have an update for this column to avoid duplicates
+        const existingUpdateIndex = updatesToMake.findIndex(
+          u => u.row === actualRow && u.col === colIndex + 1
+        );
+        
+        if (existingUpdateIndex === -1) {
+          updatesToMake.push({
+            row: actualRow,
+            col: colIndex + 1, // +1 because columns are 1-based in setValue
+            value: fieldValue,
+            field: headers[colIndex],
+            originalField: field
+          });
+          console.log(`Added update for ${fieldName} (col ${colIndex + 1}):`, fieldValue);
+        } else {
+          // Update existing update if needed
+          updatesToMake[existingUpdateIndex].value = fieldValue;
+          console.log(`Updated existing update for ${fieldName} (col ${colIndex + 1}):`, fieldValue);
+        }
+      } else {
+        console.warn(`Field not found: '${field}' in sheet '${sheetName}'. Headers:`, headers);
       }
     }
-
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-
+    
+    // Apply all updates in a single batch
+    if (updatesToMake.length > 0) {
+      console.log('Applying updates:', JSON.stringify(updatesToMake, null, 2));
+      
+      // Group updates by row to minimize API calls
+      const updatesByRow = {};
+      updatesToMake.forEach(update => {
+        if (!updatesByRow[update.row]) {
+          updatesByRow[update.row] = [];
+        }
+        updatesByRow[update.row].push(update);
+      });
+      
+      // Apply updates for each row
+      for (const row in updatesByRow) {
+        const rowUpdates = updatesByRow[row];
+        const rowRange = sheet.getRange(parseInt(row), 1, 1, sheet.getLastColumn());
+        const rowData = [rowRange.getValues()[0]];
+        
+        // Apply each update to the row data
+        rowUpdates.forEach(update => {
+          rowData[0][update.col - 1] = update.value;
+        });
+        
+        // Write the updated row data back to the sheet
+        rowRange.setValues(rowData);
+      }
+      
+      SpreadsheetApp.flush();
+      console.log('Updates applied successfully');
+    } else {
+      console.warn('No valid updates to apply');
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      updatedFields: updatesToMake.length,
+      updates: updatesToMake.map(u => ({
+        field: u.field,
+        originalField: u.originalField,
+        value: u.value,
+        row: u.row,
+        col: u.col
+      }))
+    })).setMimeType(ContentService.MimeType.JSON);
+    
   } catch (err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: err.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+    console.error('Error in handleLeadUpdate:', err);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.message,
+      stack: err.stack
+    })).setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function doPost(e) {
+  // This is no longer used but kept for backward compatibility
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    error: 'Please use GET with URL parameters instead of POST'
+  })).setMimeType(ContentService.MimeType.JSON);
 }
