@@ -94,7 +94,7 @@ router.post('/fb-webhook', async (req, res) => {
                 '793235552669212': 'Orchid Platinum',
                 '758750669703946': 'Orchid Life',
                 '836984054637126': 'Orchid Bloomsberry',
-                '655063727089499': 'Riviera Uno', // Removed extra space
+                '655063727089499': 'Riviera Uno',
                 '2394313481022296':'Orchid Salisbury',
                 '1672153646791838':'Orchid Platinum',
                 '2808675605994341':'Orchid Bloomsberry',
