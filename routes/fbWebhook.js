@@ -4,7 +4,7 @@ import { appendLeadToSheet } from '../services/googleSheetsService.js';
 
 const router = express.Router();
 
-const VERIFY_TOKEN = 'titan_verify';
+const VERIFY_TOKEN = 'goyalco_verify';
 const PAGE_ACCESS_TOKEN = 'EAATT84b6A0MBOZC5eivZAYnEjkWfZAqxzZCiFacZCNnZCFPLM07ASuRhcw8olsZCx8K1ColBEZBuYH6fTNCPcGSpFx632M7qtCxE3YEphs34ic4ZAc7fqs1CgOUMfehwjAq2qonBU1mfeBKnqUwpVkZBA5KCg4tP8sknOufz1lDBCvANQZBQRrUEn122BqumkfUXU3sUC8u';
 
 // Google Sheets API integration using service account
@@ -66,6 +66,8 @@ router.post('/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
     console.log('📦 Raw Body:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 Raw form ID from webhook (raw):', req.body?.entry?.[0]?.changes?.[0]?.value?.form_id);
+    console.log('🔍 Raw form ID type:', typeof req.body?.entry?.[0]?.changes?.[0]?.value?.form_id);
     console.log('📋 Headers:', JSON.stringify(req.headers, null, 2));
     console.log('🔍 Body type:', typeof req.body);
     console.log('🔍 Body keys:', Object.keys(req.body || {}));
@@ -98,6 +100,9 @@ router.post('/fb-webhook', async (req, res) => {
 
             // Fix the project mapping (remove extra space)
             const getProjectName = (formId) => {
+              // Convert formId to string to ensure consistent type comparison
+              const formIdStr = String(formId).trim();
+              
               const projectMap = {
                 '2394313481022296': 'Orchid Salisbury',
                 '1672153646791838': 'Orchid Platinum',
@@ -107,7 +112,39 @@ router.post('/fb-webhook', async (req, res) => {
                 // Add new form ID mappings here as needed
                 // Format: 'FORM_ID': 'Project Name'
               };
-              return projectMap[formId] || 'Facebook Lead Form';
+              
+              // Debug: Check for direct match and partial matches
+              const debugInfo = {
+                receivedFormId: formId,
+                normalizedFormId: formIdStr,
+                typeOfFormId: typeof formId,
+                availableFormIds: Object.keys(projectMap),
+                exactMatch: projectMap[formIdStr] ? 'Yes' : 'No',
+                matchedProject: projectMap[formIdStr] || 'None'
+              };
+              
+              // Check for exact match first
+              if (projectMap[formIdStr]) {
+                console.log('✅ Exact match found for form ID:', debugInfo);
+                return projectMap[formIdStr];
+              }
+              
+              // If no exact match, check for partial matches (in case of extra characters)
+              const matchedKey = Object.keys(projectMap).find(key => 
+                formIdStr.includes(key) || key.includes(formIdStr)
+              );
+              
+              if (matchedKey) {
+                console.log('🔍 Partial match found for form ID:', {
+                  ...debugInfo,
+                  matchedKey,
+                  project: projectMap[matchedKey]
+                });
+                return projectMap[matchedKey];
+              }
+              
+              console.log('❌ No match found for form ID:', debugInfo);
+              return 'Facebook Lead Form';
             };
 
             let lead = {
