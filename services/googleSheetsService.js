@@ -33,8 +33,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
     // Create a row with empty values for all columns (assuming we have at least 36 columns)
     const rowData = new Array(36).fill('');
 
-    // Map lead data to specific column indices (0-based)
-    // A:1, B:2, ..., Z:26, AA:27, AB:28, AC:29, AD:30, AE:31, AF:32, AG:33, AH:34, AI:35, AJ:36
+    // Map only the specified columns from lead data (0-based indices)
     const columnMapping = {
       // Column A (0): Lead ID
       0: lead.leadId || `LEAD-${Date.now()}`,
@@ -56,56 +55,6 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
       
       // Column G (6): City
       6: lead.city || '',
-      
-      // Column H (7): Assigned To
-      7: lead.assignedTo || '',
-      
-      // Column I (8): Assigned Email
-      8: lead.assignedEmail || '',
-      
-      // Column J (9): Assigned Time
-      9: lead.assignedTime || new Date().toISOString(),
-      
-      // Column K (10): Called?
-      10: lead.called || 'No',
-      
-      // Column L (11): Call Time
-      11: lead.callTime || '',
-      
-      // Column M (12): Call Delay?
-      12: lead.callDelay || 'No',
-      
-      // Column N (13): Site Visit?
-      13: lead.siteVisit || 'No',
-      
-      // Column O (14): Booked?
-      14: lead.booked || 'No',
-      
-      // Column P (15): Lead Quality
-      15: lead.leadQuality || 'Cold',
-      
-      // Columns Q-V (16-21): Feedback and Time fields
-      16: lead.feedback1 || '',
-      17: lead.time1 || '',
-      18: lead.feedback2 || '',
-      19: lead.time2 || '',
-      20: lead.feedback3 || '',
-      21: lead.time3 || '',
-      
-      // Column X (23): Site Visit Date
-      23: lead.siteVisitDate || '',
-      
-      // Column Y (24): Old Project
-      24: lead.oldProject || '',
-      
-      // Column Z (25): Transfer Reason
-      25: lead.transferReason || '',
-      
-      // Column AA (26): Transferred
-      26: lead.transferred || 'No',
-      
-      // Column AB (27): Transfer Time
-      27: lead.transferTime || '',
       
       // Column AF (31): Size
       31: lead.size || '',

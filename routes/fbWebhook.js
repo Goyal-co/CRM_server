@@ -218,11 +218,18 @@ router.post('/fb-webhook', async (req, res) => {
                 {
                   params: {
                     access_token: PAGE_ACCESS_TOKEN,
-                    fields: 'field_data,created_time'
+                    fields: 'field_data,created_time,ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,form_id,is_organic,platform,retailer_id,user_agent,id,created_time'
                   }
                 }
               );
-              console.log('✅ Full Lead Data:', JSON.stringify(response.data, null, 2));
+              
+              // Log the raw field data for debugging
+              console.log('🔍 Raw Facebook Lead Data:');
+              if (response.data.field_data && Array.isArray(response.data.field_data)) {
+                response.data.field_data.forEach(field => {
+                  console.log(`  - ${field.name}: ${field.values ? field.values[0] : 'No value'}`);
+                });
+              }
 
               const fields = response.data.field_data;
               if (Array.isArray(fields)) {
@@ -236,111 +243,309 @@ router.post('/fb-webhook', async (req, res) => {
                     
                     // Direct mapping of Facebook form field names to our lead properties
                     const fieldMappings = {
-                      // Name field mappings
+                      // Name field mappings (exact matches first)
                       name: [
-                        'full_name', 'full name', 'name', 'your name', 'contact name',
-                        'first name', 'first_name', 'contact_person', 'fullname',
-                        'full name', 'your full name', 'customer name', 'client name'
+                        'full_name',
+                        'full name',
+                        'Full name',
+                        'Name',
+                        'name',
+                        'your name',
+                        'contact name',
+                        'first name',
+                        'first_name',
+                        'contact_person',
+                        'fullname'
                       ],
                       
-                      // Email field mappings
+                      // Email field mappings (exact matches first)
                       email: [
-                        'email', 'email address', 'e-mail', 'e-mail address', 'emailid',
-                        'email_id', 'contact_email', 'your email', 'email id',
-                        'email_address', 'email-id', 'contact email', 'your_email'
+                        'email',
+                        'Email',
+                        'email address',
+                        'e-mail',
+                        'e-mail address',
+                        'emailid',
+                        'email_id',
+                        'contact_email',
+                        'your email',
+                        'email id',
+                        'email_address',
+                        'email-id',
+                        'contact email',
+                        'your_email'
                       ],
                       
-                      // Phone field mappings
+                      // Phone field mappings (exact matches first)
                       phone: [
-                        'phone_number', 'phone number', 'mobile', 'mobile number', 'contact number',
-                        'whatsapp', 'phone_no', 'mobile_no', 'contact_phone', 'whatsapp_number',
-                        'contact', 'telephone', 'your phone', 'phone no', 'phone_num',
-                        'contact no', 'contact_number', 'phone_number_whatsapp', 'mobile_number'
+                        'phone_number',
+                        'phone number',
+                        'Phone number',
+                        'mobile',
+                        'mobile number',
+                        'contact number',
+                        'whatsapp',
+                        'phone_no',
+                        'mobile_no',
+                        'contact_phone',
+                        'whatsapp_number',
+                        'contact',
+                        'telephone',
+                        'your phone',
+                        'phone no',
+                        'phone_num',
+                        'contact no',
+                        'contact_number',
+                        'phone_number_whatsapp',
+                        'mobile_number'
+                      ],
+                      
+                      // Size field mappings (exact matches first)
+                      size: [
+                        'your_prefered_choice_of_unit',
+                        'your_preferred_choice_of_unit?',
+                        'Your preferred size?',
+                        'your preferred size',
+                        'size',
+                        'property size',
+                        'preferred_size',
+                        'unit_size',
+                        'property_size',
+                        'size_preference',
+                        'unit_preference',
+                        'size_of_property',
+                        'property_dimensions',
+                        'area',
+                        'carpet area',
+                        'built-up area',
+                        'super built-up area',
+                        'carpet_area',
+                        'built_up_area',
+                        'super_built_up_area',
+                        'required_size',
+                        'size_requirement',
+                        'unit_size_preference',
+                        'property_area',
+                        'your_preferred_size',
+                        'preferred_unit_size',
+                        'size_of_unit',
+                        'unit_size_preferred'
+                      ],
+                      
+                      // Budget field mappings (exact matches first)
+                      budget: [
+                        'budget_above_4.8cr',
+                        'budget_(above_4.8cr)',
+                        'Budget',
+                        'Budget Dropdown',
+                        'price range',
+                        'expected budget',
+                        'investment range',
+                        'affordability',
+                        'price_range',
+                        'expected_budget',
+                        'investment_budget',
+                        'budget_range',
+                        'max_budget',
+                        'min_budget',
+                        'total_budget',
+                        'budget_in_lakhs',
+                        'budget_in_crores',
+                        'your_budget',
+                        'price_bracket',
+                        'investment_amount',
+                        'price_range_preference',
+                        'budget_range_preferred',
+                        'expected_investment',
+                        'price_range_you_are_looking_for',
+                        'your_budget_range',
+                        'investment_budget_range',
+                        'price_budget',
+                        'investment_range_preferred'
+                      ],
+                      
+                      // Purpose field mappings (exact matches first)
+                      purpose: [
+                        'Purpose',
+                        'purpose',
+                        'requirement',
+                        'property purpose',
+                        'end use',
+                        'usage',
+                        'property_purpose',
+                        'end_use',
+                        'property_type',
+                        'purpose_of_investment',
+                        'investment_purpose',
+                        'usage_purpose',
+                        'property_use',
+                        'intended_use',
+                        'purchase_purpose',
+                        'investment_type',
+                        'purpose_of_purchase',
+                        'property_usage',
+                        'what_is_your_purpose',
+                        'purpose_of_property',
+                        'property_purpose_type',
+                        'intended_usage',
+                        'purpose_of_investment_property'
+                      ],
+                      
+                      // Priority field mappings (exact matches first)
+                      priority: [
+                        'top_priority_lifestyle_connectivity_amenities_etc',
+                        'top_priority_(_lifestyle/_connectivity/_amenities__etc)',
+                        'Top Priority (Lifestyle / Connectivity / Amenities etc)',
+                        'Top Priority ( Lifestyle / Connectivity / Amenities etc)',
+                        'top_priority',
+                        'priority',
+                        'top priority (lifestyle/connectivity/amenities etc)',
+                        'preference',
+                        'main_priority',
+                        'key_consideration',
+                        'primary_concern',
+                        'main_requirement',
+                        'key_priority',
+                        'what_is_your_top_priority',
+                        'priority_in_property',
+                        'main_focus',
+                        'primary_priority',
+                        'top_priority_for_you',
+                        'key_factors',
+                        'main_consideration',
+                        'priority_consideration',
+                        'what_matters_most',
+                        'top_priority_criteria'
+                      ],
+                      
+                      // Work Location field mappings (exact matches first)
+                      workLocation: [
+                        'Work Location',
+                        'work_location',
+                        'work location',
+                        'office location',
+                        'workplace',
+                        'office area',
+                        'job location',
+                        'office_location',
+                        'work_address',
+                        'job_location',
+                        'office_city',
+                        'work_city',
+                        'current_work_location',
+                        'preferred_work_location',
+                        'workplace_location',
+                        'office_address',
+                        'job_city',
+                        'work_area',
+                        'office_district',
+                        'your_work_location',
+                        'current_office_location',
+                        'preferred_workplace',
+                        'office_location_area',
+                        'where_do_you_work',
+                        'your_office_location',
+                        'work_office_address'
+                      ],
+                      
+                      // Project mapping - will be set from the form ID
+                      project: [
+                        'project',
+                        'property',
+                        'project name',
+                        'project interested in',
+                        'interested project'
                       ],
                       
                       // City field mappings
                       city: [
-                        'city', 'location', 'current city', 'residence city', 'preferred location',
-                        'residential_city', 'current_location', 'preferred_city', 'location_city',
-                        'your city', 'residential city', 'current_city', 'your_location', 'location_preference'
-                      ],
-                      
-                      // Project mapping - will be set from the form ID
-                      project: ['project', 'property', 'project name', 'project interested in', 'interested project'],
-                      
-                      // Size field mappings
-                      size: [
-                        'your_prefered_choice_of_unit', 'your preferred size', 'size', 'property size',
-                        'preferred_size', 'unit_size', 'property_size', 'size_preference', 'unit_preference',
-                        'size_of_property', 'property_dimensions', 'area', 'carpet area', 'built-up area',
-                        'super built-up area', 'carpet_area', 'built_up_area', 'super_built_up_area',
-                        'required_size', 'size_requirement', 'unit_size_preference', 'property_area',
-                        'your_preferred_size', 'preferred_unit_size', 'size_of_unit', 'unit_size_preferred'
-                      ],
-                      
-                      // Budget field mappings
-                      budget: [
-                        'budget_above_4.8cr', 'budget', 'price range', 'expected budget', 'investment range',
-                        'affordability', 'price_range', 'expected_budget', 'investment_budget', 'budget_range',
-                        'max_budget', 'min_budget', 'total_budget', 'budget_in_lakhs', 'budget_in_crores',
-                        'your_budget', 'price_bracket', 'investment_amount', 'price_range_preference',
-                        'budget_range_preferred', 'expected_investment', 'price_range_you_are_looking_for',
-                        'your_budget_range', 'investment_budget_range', 'price_budget', 'investment_range_preferred'
-                      ],
-                      
-                      // Purpose field mappings
-                      purpose: [
-                        'purpose', 'requirement', 'property purpose', 'end use', 'usage',
-                        'property_purpose', 'end_use', 'property_type', 'purpose_of_investment',
-                        'investment_purpose', 'usage_purpose', 'property_use', 'intended_use',
-                        'purchase_purpose', 'investment_type', 'purpose_of_purchase', 'property_usage',
-                        'what_is_your_purpose', 'purpose_of_property', 'property_purpose_type',
-                        'intended_usage', 'purpose_of_investment_property'
-                      ],
-                      
-                      // Priority field mappings
-                      priority: [
-                        'top_priority_lifestyle_connectivity_amenities_etc', 'top_priority', 'priority',
-                        'top priority (lifestyle/connectivity/amenities etc)', 'preference', 'main_priority',
-                        'key_consideration', 'primary_concern', 'main_requirement', 'key_priority',
-                        'what_is_your_top_priority', 'priority_in_property', 'main_focus', 'primary_priority',
-                        'top_priority_for_you', 'key_factors', 'main_consideration', 'priority_consideration',
-                        'what_matters_most', 'top_priority_criteria'
-                      ],
-                      
-                      // Work Location field mappings
-                      workLocation: [
-                        'work_location', 'work location', 'office location', 'workplace', 'office area',
-                        'job location', 'office_location', 'work_address', 'job_location', 'office_city',
-                        'work_city', 'current_work_location', 'preferred_work_location', 'workplace_location',
-                        'office_address', 'job_city', 'work_area', 'office_district', 'your_work_location',
-                        'current_office_location', 'preferred_workplace', 'office_location_area',
-                        'where_do_you_work', 'your_office_location', 'work_office_address'
+                        'city',
+                        'location',
+                        'current city',
+                        'residence city',
+                        'preferred location',
+                        'residential_city',
+                        'current_location',
+                        'preferred_city',
+                        'location_city',
+                        'your city',
+                        'residential city',
+                        'current_city',
+                        'your_location',
+                        'location_preference'
                       ],
                       
                       // Source is always Facebook Lead for these webhooks
-                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin', 'source_of_lead'],
-                      
-                      // Additional fields
-                      called: ['called', 'contacted', 'follow up done', 'contacted_status', 'is_called', 'followup_done'],
-                      callTime: ['call time', 'best time to call', 'preferred call time', 'best_time_to_call', 
-                               'preferred_time', 'callback_time', 'convenient_time'],
-                      siteVisit: ['site visit', 'property visit', 'schedule visit', 'interested in site visit',
-                                'interested_in_site_visit', 'visit_required'],
-                      siteVisitDate: ['visit date', 'preferred date', 'date of visit', 'site visit date',
-                                    'preferred_visit_date', 'visit_date', 'scheduled_visit_date', 'appointment_date'],
-                      leadQuality: ['lead quality', 'lead score', 'hot/warm/cold', 'lead status', 'lead_quality',
-                                  'lead_score', 'lead_status', 'lead_temperature', 'lead_rating'],
-                      notes: ['notes', 'comments', 'additional information', 'message', 'requirements',
-                             'additional_notes', 'special_requirements', 'comments_notes', 'additional_comments']
+                      source: [
+                        'source',
+                        'lead source',
+                        'how did you hear about us',
+                        'lead origin',
+                        'source_of_lead'
+                      ]
                     };
                     
-                    // Apply field mappings
-                    Object.entries(fieldMappings).forEach(([field, patterns]) => {
-                      if (!lead[field] && patterns.some(pattern => fieldName.includes(pattern))) {
-                        lead[field] = value;
+                    // Normalize the incoming field name for comparison
+                    const normalize = (str) => {
+                      if (!str) return '';
+                      return String(str)
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, '')  // Remove all non-alphanumeric
+                        .trim();
+                    };
+                    
+                    const normalizedFieldName = normalize(fieldName);
+                    let matched = false;
+                    
+                    // Check each field mapping
+                    for (const [field, patterns] of Object.entries(fieldMappings)) {
+                      if (lead[field]) continue; // Skip if already set
+                      
+                      // Check each pattern for this field
+                      for (const pattern of patterns) {
+                        const normalizedPattern = normalize(pattern);
+                        
+                        // Try different matching strategies in order of specificity
+                        if (normalizedFieldName === normalizedPattern) {
+                          // 1. Exact match after normalization
+                          lead[field] = value;
+                          console.log(`✅ Exact match: Mapped '${fieldName}' to '${field}'`);
+                          matched = true;
+                          break;
+                        } 
+                        // 2. Check if field name contains the pattern or vice versa
+                        else if (normalizedFieldName.includes(normalizedPattern) || 
+                                normalizedPattern.includes(normalizedFieldName)) {
+                          // Additional check to prevent false positives for very short patterns
+                          if (normalizedPattern.length >= 3 || normalizedFieldName.length <= 5) {
+                            lead[field] = value;
+                            console.log(`✅ Partial match: Mapped '${fieldName}' to '${field}'`);
+                            matched = true;
+                            break;
+                          }
+                        }
                       }
-                    });
+                      
+                      if (matched) break; // Move to next field if we found a match
+                    }
+                    
+                    // Special handling for common fields as fallback
+                    if (!matched) {
+                      const lowerFieldName = fieldName.toLowerCase();
+                      
+                      if (!lead.name && (lowerFieldName.includes('name') || lowerFieldName.includes('fullname'))) {
+                        lead.name = value;
+                        console.log(`✅ Fallback: Mapped '${fieldName}' to 'name'`);
+                      } 
+                      else if (!lead.email && lowerFieldName.includes('email')) {
+                        lead.email = value;
+                        console.log(`✅ Fallback: Mapped '${fieldName}' to 'email'`);
+                      }
+                      else if (!lead.phone && (lowerFieldName.includes('phone') || lowerFieldName.includes('mobile') || lowerFieldName.includes('whatsapp'))) {
+                        lead.phone = value;
+                        console.log(`✅ Fallback: Mapped '${fieldName}' to 'phone'`);
+                      }
+                    }
                     
                     // Special handling for priority to standardize values
                     if (fieldName.includes('priority') || fieldName.includes('urgency')) {
