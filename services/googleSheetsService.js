@@ -30,6 +30,12 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
   try {
     const sheets = getGoogleSheetsAPI();
 
+    // Define the columns we want to update from Meta lead form
+    const metaLeadColumns = [
+      'Lead ID', 'Project', 'Source', 'Name', 'Email', 'Phone', 'City',
+      'Size', 'Budget', 'Purpose', 'Priority', 'Work Location'
+    ];
+    
     // Get all headers to maintain column order
     const headers = await getSheetHeaders(spreadsheetId);
     if (!headers || headers.length === 0) {
@@ -39,8 +45,8 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
     // Create a row with empty values for all columns
     const rowData = new Array(headers.length).fill('');
 
-    // Map lead data to the correct columns based on header names
-    const columnMap = {
+    // Map only the Meta lead fields we want to update
+    const metaLeadData = {
       'Lead ID': lead.leadId || `LEAD-${Date.now()}`,
       'Project': lead.project || 'Not Specified',
       'Source': lead.source || 'Facebook Lead',
@@ -48,30 +54,6 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
       'Email': lead.email || '',
       'Phone': lead.phone || '',
       'City': lead.city || '',
-      'Assigned To': lead.assignedTo || '',
-      'Assigned Email': lead.assignedEmail || '',
-      'Assigned Time': lead.assignedTime || new Date().toISOString(),
-      'Called?': lead.called || 'No',
-      'Call Time': lead.callTime || '',
-      'Call Delay?': lead.callDelay || 'No',
-      'Site Visit?': lead.siteVisit || 'No',
-      'Booked?': lead.booked || 'No',
-      'Lead Quality': lead.leadQuality || 'Cold',
-      'Feedback 1': lead.feedback1 || '',
-      'Time 1': lead.time1 || '',
-      'Feedback 2': lead.feedback2 || '',
-      'Time 2': lead.time2 || '',
-      'Feedback 3': lead.feedback3 || '',
-      'Time 3': lead.time3 || '',
-      'Feedback 4': lead.feedback4 || '',
-      'Time 4': lead.time4 || '',
-      'Feedback 5': lead.feedback5 || '',
-      'Time 5': lead.time5 || '',
-      'Site Visit Date': lead.siteVisitDate || '',
-      'Old Project': lead.oldProject || '',
-      'Transfer Reason': lead.transferReason || '',
-      'Transferred': lead.transferred || 'No',
-      'Transfer Time': lead.transferTime || '',
       'Size': lead.size || '',
       'Budget': lead.budget || '',
       'Purpose': lead.purpose || '',
@@ -81,12 +63,12 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
 
     // Map the data to the correct columns based on header names
     headers.forEach((header, index) => {
-      if (columnMap.hasOwnProperty(header)) {
-        rowData[index] = columnMap[header];
+      if (metaLeadData.hasOwnProperty(header) && metaLeadColumns.includes(header)) {
+        rowData[index] = metaLeadData[header];
       }
     });
     
-    console.log('📝 Appending lead with data:', rowData);
+    console.log('📝 Appending lead with data:', metaLeadData);
 
     const request = {
       spreadsheetId,
