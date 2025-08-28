@@ -51,109 +51,15 @@ return projectMappings[normalized] || normalized;
 
 // Helper to map only required columns for Google Sheet
 function mapLeadToSheetColumns(lead) {
-  // Helper function to get value with fallbacks
-  const getValue = (keys, defaultValue = '') => {
-    if (!Array.isArray(keys)) keys = [keys];
-    for (const key of keys) {
-      if (lead[key] !== undefined && lead[key] !== null && lead[key] !== '') {
-        return lead[key];
-      }
-    }
-    return defaultValue;
-  };
-
-  // Return an array that maps to the exact columns in the Google Sheet
-  // Columns A-G (0-6 in zero-based index)
-  const row = new Array(32).fill(''); // Total columns up to AF
-  
-  // Column A: Lead ID
-  row[0] = getValue(['leadId', 'lead_id', 'id'], `LEAD-${Date.now()}`);
-  
-  // Column B: Project
-  row[1] = normalizeProjectName(getValue(['project', 'project_name', 'project name'], 'Facebook Lead'));
-  
-  // Column C: Source
-  row[2] = getValue(['source', 'lead_source'], 'Facebook');
-  
-  // Column D: Name
-  row[3] = getValue([
-    'name', 'full_name', 'Full Name', 'fullname', 'Fullname',
-    'FULLNAME', 'Full_Name', 'full name', 'Full name', 'FULL NAME', 
-    'Contact Name', 'contact_name'
-  ]);
-  
-  // Column E: Email
-  row[4] = getValue([
-    'email', 'email_address', 'Email Address', 'email-address',
-    'Email', 'EMAIL', 'Email_Address', 'emailaddress', 'EmailAddress', 
-    'EMAIL_ADDRESS', 'email address'
-  ]);
-  
-  // Column F: Phone
-  row[5] = getValue([
-    'phone', 'phone_number', 'Phone Number', 'phone-number', 'Phone', 
-    'PHONE', 'Phone_Number', 'phonenumber', 'PhoneNumber', 'PHONE_NUMBER', 
-    'phone number', 'mobile', 'Mobile', 'MOBILE', 'contact', 'Contact', 
-    'contact_number', 'Contact Number', 'contactnumber', 'ContactNumber'
-  ]);
-  
-  // Column G: City
-  row[6] = getValue([
-    'city', 'location', 'City', 'CITY', 'Location', 'LOCATION',
-    'Your Location', 'your_location', 'your-location', 'Your_Location',
-    'Preferred Location', 'preferred_location', 'preferred-location',
-    'Preferred_Location', 'CITY_NAME', 'city_name', 'city-name', 'City Name'
-  ]);
-  
-  // Column AF (index 31): Size
-  row[31] = getValue([
-    'size', 'Size', 'SIZE', 'Preferred Size', 'preferred_size',
-    'preferred-size', 'Preferred_Size', 'PREFERRED_SIZE', 'Your preferred size?', 
-    'your_preferred_size', 'your-preferred-size', 'Your_Preferred_Size', 
-    'YOUR_PREFERRED_SIZE', 'YourPreferredSize', 'Property Size', 'property_size', 
-    'property-size', 'Property_Size', 'Size Preference', 'size_preference', 
-    'size-preference', 'Size_Preference'
-  ]);
-  
-  // Column AG (index 32): Budget
-  row[32] = getValue([
-    'budget', 'Budget', 'BUDGET', 'Budget Dropdown', 'budget_dropdown',
-    'budget-dropdown', 'Budget_Dropdown', 'BUDGET_DROPDOWN', 'Budget Range', 
-    'budget_range', 'budget-range', 'Budget_Range', 'Price Range', 'price_range', 
-    'price-range', 'Price_Range', 'Expected Budget', 'expected_budget', 
-    'expected-budget', 'Expected_Budget', 'Budget (Above 4.8Cr)', 
-    'budget_above_4.8cr', 'budget-above-4.8cr', 'Budget_Above_4.8Cr'
-  ]);
-  
-  // Column AH (index 33): Purpose
-  row[33] = getValue([
-    'purpose', 'Purpose', 'PURPOSE', 'Property Purpose', 'property_purpose',
-    'property-purpose', 'Property_Purpose', 'Buying Purpose', 'buying_purpose',
-    'buying-purpose', 'Buying_Purpose', 'Investment Purpose', 'investment_purpose',
-    'investment-purpose', 'Investment_Purpose', 'Requirement', 'requirement',
-    'REQUIREMENT', 'Requirements', 'requirements', 'REQUIREMENTS'
-  ]);
-  
-  // Column AI (index 34): Priority
-  row[34] = getValue([
-    'priority', 'Priority', 'PRIORITY', 'Top Priority', 'top_priority',
-    'top-priority', 'Top_Priority', 'TOP_PRIORITY', 'Top Priority ( Lifestyle / Connectivity / Amenities etc)',
-    'Top Priority ( Lifestyle/ Connectivity/ Amenities etc)', 'top_priority_lifestyle_connectivity_amenities',
-    'top-priority-lifestyle-connectivity-amenities', 'Top_Priority_Lifestyle_Connectivity_Amenities',
-    'Main Priority', 'main_priority', 'main-priority', 'Main_Priority',
-    'Buying Criteria', 'buying_criteria', 'buying-criteria', 'Buying_Criteria'
-  ], 'Medium');
-  
-  // Column AJ (index 35): Work Location
-  row[35] = getValue([
-    'work_location', 'work-location', 'Work Location', 'Work_Location',
-    'WORK_LOCATION', 'Office Location', 'office_location', 'office-location',
-    'Office_Location', 'Work Address', 'work_address', 'work-address',
-    'Work_Address', 'Job Location', 'job_location', 'job-location',
-    'Job_Location', 'WorkLocation', 'worklocation', 'WORKLOCATION'
-  ]);
-  
-  return row;
+return {
+leadId: lead.leadId || '',
+project: normalizeProjectName(lead.project) || '',
+source: lead.source || '',
+name: lead.name || '',
+email: lead.email || '',
+phone: lead.phone || '',
+city: lead.city || ''
+};
 }
 
 // Webhook verification endpoint
