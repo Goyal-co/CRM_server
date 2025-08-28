@@ -62,6 +62,32 @@ function mapLeadToSheetColumns(lead) {
   };
 }
 
+// Webhook verification endpoint
+router.get('/fb-webhook', (req, res) => {
+  // Parse the query params
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  // Check if a token and mode were sent
+  if (mode && token) {
+    // Check the mode and token sent are correct
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      // Respond with 200 OK and challenge token from the request
+      console.log('✅ Webhook verified successfully');
+      return res.status(200).send(challenge);
+    } else {
+      // Responds with '403 Forbidden' if verify tokens do not match
+      console.error('❌ Verification failed. Tokens do not match.');
+      return res.sendStatus(403);
+    }
+  } else {
+    console.error('❌ Missing verify token or mode');
+    return res.sendStatus(400);
+  }
+});
+
+// Webhook POST endpoint
 router.post('/fb-webhook', async (req, res) => {
   try {
     console.log('📨 Webhook POST hit');
