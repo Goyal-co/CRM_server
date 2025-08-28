@@ -36,41 +36,91 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
     // Map lead data to specific column indices (0-based)
     // A:1, B:2, ..., Z:26, AA:27, AB:28, AC:29, AD:30, AE:31, AF:32, AG:33, AH:34, AI:35, AJ:36
     const columnMapping = {
-      // Column A (1-based index 0)
-      0: lead.leadId || `LEAD-${Date.now()}`,  // Lead ID
+      // Column A (0): Lead ID
+      0: lead.leadId || `LEAD-${Date.now()}`,
       
-      // Column B (1-based index 1)
-      1: lead.project || 'Not Specified',  // Project
+      // Column B (1): Project
+      1: lead.project || 'Not Specified',
       
-      // Column C (1-based index 2)
-      2: lead.source || 'Facebook Lead',  // Source
+      // Column C (2): Source
+      2: lead.source || 'Facebook Lead',
       
-      // Column D (1-based index 3)
-      3: lead.name || '',  // Name
+      // Column D (3): Name
+      3: lead.name || '',
       
-      // Column E (1-based index 4)
-      4: lead.email || '',  // Email
+      // Column E (4): Email
+      4: lead.email || '',
       
-      // Column F (1-based index 5)
-      5: lead.phone || '',  // Phone
+      // Column F (5): Phone
+      5: lead.phone || '',
       
-      // Column G (1-based index 6)
-      6: lead.city || '',  // City
+      // Column G (6): City
+      6: lead.city || '',
       
-      // Column AF (1-based index 31)
-      31: lead.size || '',  // Size
+      // Column H (7): Assigned To
+      7: lead.assignedTo || '',
       
-      // Column AG (1-based index 32)
-      32: lead.budget || '',  // Budget
+      // Column I (8): Assigned Email
+      8: lead.assignedEmail || '',
       
-      // Column AH (1-based index 33)
-      33: lead.purpose || '',  // Purpose
+      // Column J (9): Assigned Time
+      9: lead.assignedTime || new Date().toISOString(),
       
-      // Column AI (1-based index 34)
-      34: lead.priority || 'Medium',  // Priority
+      // Column K (10): Called?
+      10: lead.called || 'No',
       
-      // Column AJ (1-based index 35)
-      35: lead.workLocation || ''  // Work Location
+      // Column L (11): Call Time
+      11: lead.callTime || '',
+      
+      // Column M (12): Call Delay?
+      12: lead.callDelay || 'No',
+      
+      // Column N (13): Site Visit?
+      13: lead.siteVisit || 'No',
+      
+      // Column O (14): Booked?
+      14: lead.booked || 'No',
+      
+      // Column P (15): Lead Quality
+      15: lead.leadQuality || 'Cold',
+      
+      // Columns Q-V (16-21): Feedback and Time fields
+      16: lead.feedback1 || '',
+      17: lead.time1 || '',
+      18: lead.feedback2 || '',
+      19: lead.time2 || '',
+      20: lead.feedback3 || '',
+      21: lead.time3 || '',
+      
+      // Column X (23): Site Visit Date
+      23: lead.siteVisitDate || '',
+      
+      // Column Y (24): Old Project
+      24: lead.oldProject || '',
+      
+      // Column Z (25): Transfer Reason
+      25: lead.transferReason || '',
+      
+      // Column AA (26): Transferred
+      26: lead.transferred || 'No',
+      
+      // Column AB (27): Transfer Time
+      27: lead.transferTime || '',
+      
+      // Column AF (31): Size
+      31: lead.size || '',
+      
+      // Column AG (32): Budget
+      32: lead.budget || '',
+      
+      // Column AH (33): Purpose
+      33: lead.purpose || '',
+      
+      // Column AI (34): Priority
+      34: lead.priority || 'Medium',
+      
+      // Column AJ (35): Work Location
+      35: lead.workLocation || ''
     };
 
     // Apply the mapping to the row data
@@ -92,7 +142,17 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
 
     const response = await sheets.spreadsheets.values.append(request);
     console.log('✅ Lead appended to Google Sheet:', response.data.updates?.updatedRange);
-    console.log('📊 Data fields included:', Object.keys(columnMap).join(', '));
+    console.log('📊 Data fields included:', Object.keys(columnMapping).map(k => {
+      const colNames = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      const colNum = parseInt(k);
+      let colName = '';
+      if (colNum >= 26) {
+        colName = 'A' + colNames[colNum - 26];
+      } else {
+        colName = colNames[colNum];
+      }
+      return `${colName} (${colNum + 1})`;
+    }).join(', '));
     return true;
   } catch (error) {
     console.error('❌ Error appending to Google Sheet:', error.message);

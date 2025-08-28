@@ -234,47 +234,98 @@ router.post('/fb-webhook', async (req, res) => {
                     // Store the raw field value
                     lead[f.name] = value;
                     
-                    // Map fields based on common naming patterns - expanded to match all possible Facebook form field names
+                    // Direct mapping of Facebook form field names to our lead properties
                     const fieldMappings = {
-                      // Standard contact info - expanded with more variations
-                      name: ['full name', 'first name', 'name', 'contact name', 'your name', 'full_name', 'first_name', 'contact_person'],
-                      email: ['email', 'email address', 'e-mail', 'e-mail address', 'emailid', 'email_id', 'contact_email'],
-                      phone: ['phone', 'mobile', 'phone number', 'mobile number', 'contact number', 'whatsapp', 
-                            'phone_no', 'mobile_no', 'contact_phone', 'whatsapp_number', 'contact', 'telephone'],
-                      city: ['city', 'location', 'current city', 'residence city', 'preferred location', 
-                           'residential_city', 'current_location', 'preferred_city', 'location_city'],
+                      // Name field mappings
+                      name: [
+                        'full_name', 'full name', 'name', 'your name', 'contact name',
+                        'first name', 'first_name', 'contact_person', 'fullname',
+                        'full name', 'your full name', 'customer name', 'client name'
+                      ],
                       
-                      // Project details - expanded with more variations
-                      project: ['project', 'property', 'project name', 'project interested in', 'interested project',
-                              'project_name', 'property_name', 'interested_project', 'project_interest', 'project_interested_in'],
-                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin', 'source_of_lead', 
-                             'how_did_you_hear_about_us', 'lead_source', 'source_type'],
+                      // Email field mappings
+                      email: [
+                        'email', 'email address', 'e-mail', 'e-mail address', 'emailid',
+                        'email_id', 'contact_email', 'your email', 'email id',
+                        'email_address', 'email-id', 'contact email', 'your_email'
+                      ],
                       
-                      // Lead details - expanded with more variations
-                      size: ['size', 'property size', 'area', 'carpet area', 'built-up area', 'super built-up area',
-                           'property_size', 'carpet_area', 'built_up_area', 'super_built_up_area', 'required_size',
-                           'carpet', 'builtup', 'superbuiltup', 'carpetarea', 'builtuparea', 'superbuiltuparea'],
-                            
-                      budget: ['budget', 'price range', 'expected budget', 'investment range', 'affordability',
-                             'price_range', 'expected_budget', 'investment_budget', 'budget_range', 'max_budget',
-                             'min_budget', 'total_budget', 'budget_in_lakhs', 'budget_in_crores'],
-                             
-                      purpose: ['purpose', 'requirement', 'property purpose', 'end use', 'usage', 'property_purpose',
-                              'end_use', 'property_type', 'purpose_of_investment', 'investment_purpose', 'usage_purpose'],
-                              
-                      priority: ['priority', 'urgency', 'timeline', 'timeframe', 'when to buy', 'buying_timeline',
-                               'purchase_urgency', 'time_to_purchase', 'purchase_timeline', 'when_planning_to_buy'],
-                               
-                      workLocation: ['work location', 'office location', 'workplace', 'office area', 'job location',
-                                   'office_location', 'work_address', 'job_location', 'office_city', 'work_city',
-                                   'current_work_location', 'preferred_work_location'],
+                      // Phone field mappings
+                      phone: [
+                        'phone_number', 'phone number', 'mobile', 'mobile number', 'contact number',
+                        'whatsapp', 'phone_no', 'mobile_no', 'contact_phone', 'whatsapp_number',
+                        'contact', 'telephone', 'your phone', 'phone no', 'phone_num',
+                        'contact no', 'contact_number', 'phone_number_whatsapp', 'mobile_number'
+                      ],
                       
-                      // Additional fields - expanded with more variations
+                      // City field mappings
+                      city: [
+                        'city', 'location', 'current city', 'residence city', 'preferred location',
+                        'residential_city', 'current_location', 'preferred_city', 'location_city',
+                        'your city', 'residential city', 'current_city', 'your_location', 'location_preference'
+                      ],
+                      
+                      // Project mapping - will be set from the form ID
+                      project: ['project', 'property', 'project name', 'project interested in', 'interested project'],
+                      
+                      // Size field mappings
+                      size: [
+                        'your_prefered_choice_of_unit', 'your preferred size', 'size', 'property size',
+                        'preferred_size', 'unit_size', 'property_size', 'size_preference', 'unit_preference',
+                        'size_of_property', 'property_dimensions', 'area', 'carpet area', 'built-up area',
+                        'super built-up area', 'carpet_area', 'built_up_area', 'super_built_up_area',
+                        'required_size', 'size_requirement', 'unit_size_preference', 'property_area',
+                        'your_preferred_size', 'preferred_unit_size', 'size_of_unit', 'unit_size_preferred'
+                      ],
+                      
+                      // Budget field mappings
+                      budget: [
+                        'budget_above_4.8cr', 'budget', 'price range', 'expected budget', 'investment range',
+                        'affordability', 'price_range', 'expected_budget', 'investment_budget', 'budget_range',
+                        'max_budget', 'min_budget', 'total_budget', 'budget_in_lakhs', 'budget_in_crores',
+                        'your_budget', 'price_bracket', 'investment_amount', 'price_range_preference',
+                        'budget_range_preferred', 'expected_investment', 'price_range_you_are_looking_for',
+                        'your_budget_range', 'investment_budget_range', 'price_budget', 'investment_range_preferred'
+                      ],
+                      
+                      // Purpose field mappings
+                      purpose: [
+                        'purpose', 'requirement', 'property purpose', 'end use', 'usage',
+                        'property_purpose', 'end_use', 'property_type', 'purpose_of_investment',
+                        'investment_purpose', 'usage_purpose', 'property_use', 'intended_use',
+                        'purchase_purpose', 'investment_type', 'purpose_of_purchase', 'property_usage',
+                        'what_is_your_purpose', 'purpose_of_property', 'property_purpose_type',
+                        'intended_usage', 'purpose_of_investment_property'
+                      ],
+                      
+                      // Priority field mappings
+                      priority: [
+                        'top_priority_lifestyle_connectivity_amenities_etc', 'top_priority', 'priority',
+                        'top priority (lifestyle/connectivity/amenities etc)', 'preference', 'main_priority',
+                        'key_consideration', 'primary_concern', 'main_requirement', 'key_priority',
+                        'what_is_your_top_priority', 'priority_in_property', 'main_focus', 'primary_priority',
+                        'top_priority_for_you', 'key_factors', 'main_consideration', 'priority_consideration',
+                        'what_matters_most', 'top_priority_criteria'
+                      ],
+                      
+                      // Work Location field mappings
+                      workLocation: [
+                        'work_location', 'work location', 'office location', 'workplace', 'office area',
+                        'job location', 'office_location', 'work_address', 'job_location', 'office_city',
+                        'work_city', 'current_work_location', 'preferred_work_location', 'workplace_location',
+                        'office_address', 'job_city', 'work_area', 'office_district', 'your_work_location',
+                        'current_office_location', 'preferred_workplace', 'office_location_area',
+                        'where_do_you_work', 'your_office_location', 'work_office_address'
+                      ],
+                      
+                      // Source is always Facebook Lead for these webhooks
+                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin', 'source_of_lead'],
+                      
+                      // Additional fields
                       called: ['called', 'contacted', 'follow up done', 'contacted_status', 'is_called', 'followup_done'],
                       callTime: ['call time', 'best time to call', 'preferred call time', 'best_time_to_call', 
                                'preferred_time', 'callback_time', 'convenient_time'],
                       siteVisit: ['site visit', 'property visit', 'schedule visit', 'interested in site visit',
-                                'site_visit', 'property_visit', 'schedule_visit', 'site_visit_interest',
                                 'interested_in_site_visit', 'visit_required'],
                       siteVisitDate: ['visit date', 'preferred date', 'date of visit', 'site visit date',
                                     'preferred_visit_date', 'visit_date', 'scheduled_visit_date', 'appointment_date'],
