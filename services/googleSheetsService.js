@@ -30,7 +30,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
   try {
     const sheets = getGoogleSheetsAPI();
 
-    // Only include columns A-G for MagicBricks and similar leads
+    // Map all lead fields to sheet columns
     const values = [
       [
         lead.leadId || '',
@@ -39,9 +39,16 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         lead.name || '',
         lead.email || '',
         lead.phone || '',
-        lead.city || ''
+        lead.city || '',
+        lead.size || '',
+        lead.budget || '',
+        lead.purpose || '',
+        lead.priority || '',
+        lead.workLocation || ''
       ]
     ];
+    
+    console.log('📝 Appending lead with data:', values[0]);
 
     const request = {
       spreadsheetId,

@@ -58,7 +58,12 @@ function mapLeadToSheetColumns(lead) {
     name: lead.name || '',
     email: lead.email || '',
     phone: lead.phone || '',
-    city: lead.city || ''
+    city: lead.city || '',
+    size: lead.size || '',
+    budget: lead.budget || '',
+    purpose: lead.purpose || '',
+    priority: lead.priority || '',
+    workLocation: lead.workLocation || ''
   };
 }
 
@@ -199,22 +204,42 @@ router.post('/fb-webhook', async (req, res) => {
               if (Array.isArray(fields)) {
                 fields.forEach(f => {
                   if (f.name && Array.isArray(f.values)) {
+                    const value = f.values[0] || '';
                     // Store the field value
-                    lead[f.name] = f.values[0] || '';
+                    lead[f.name] = value;
                     
                     // Also store with common variations for better mapping
                     const fieldName = f.name.toLowerCase();
+                    
+                    // Map standard fields
                     if (fieldName.includes('name') && !lead.name) {
-                      lead.name = f.values[0] || '';
+                      lead.name = value;
                     }
                     if (fieldName.includes('email') && !lead.email) {
-                      lead.email = f.values[0] || '';
+                      lead.email = value;
                     }
                     if (fieldName.includes('phone') && !lead.phone) {
-                      lead.phone = f.values[0] || '';
+                      lead.phone = value;
                     }
-                    if (fieldName.includes('city') || fieldName.includes('location') && !lead.city) {
-                      lead.city = f.values[0] || '';
+                    if ((fieldName.includes('city') || fieldName.includes('location')) && !lead.city) {
+                      lead.city = value;
+                    }
+                    
+                    // Map new fields with common variations
+                    if ((fieldName.includes('size') || fieldName.includes('property size')) && !lead.size) {
+                      lead.size = value;
+                    }
+                    if ((fieldName.includes('budget') || fieldName.includes('price range')) && !lead.budget) {
+                      lead.budget = value;
+                    }
+                    if ((fieldName.includes('purpose') || fieldName.includes('requirement')) && !lead.purpose) {
+                      lead.purpose = value;
+                    }
+                    if (fieldName.includes('priority') && !lead.priority) {
+                      lead.priority = value;
+                    }
+                    if ((fieldName.includes('work location') || fieldName.includes('office location') || fieldName.includes('workplace')) && !lead.workLocation) {
+                      lead.workLocation = value;
                     }
                   }
                 });

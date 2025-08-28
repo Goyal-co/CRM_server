@@ -80,21 +80,105 @@ function extractLeadsFromGmail() {
       insertedFingerprints.push(leadFingerprint);
 
       const leadId = "LEAD-" + new Date().getTime();
-      sheet.getRange(newRow, 1, 1, 7).setValues([[
-        leadId,
-        lead.project,
-        lead.source,
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.city
-      ]]);
+      // Get the headers to ensure we're mapping to the right columns
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      
+      // Create a row with empty values matching the total number of columns
+      const rowData = new Array(headers.length).fill('');
+      
+      // Map the lead data to the correct columns based on header names
+      const columnMap = {
+        'Lead ID': leadId,
+        'Project': lead.project || '',
+        'Source': lead.source || 'Facebook Lead',
+        'Name': lead.name || '',
+        'Email': lead.email || '',
+        'Phone': lead.phone || '',
+        'City': lead.city || '',
+        'Assigned To': lead.assignedTo || '',
+        'Assigned Email': lead.assignedEmail || '',
+        'Assigned Time': lead.assignedTime || new Date().toISOString(),
+        'Called?': lead.called || 'No',
+        'Call Time': lead.callTime || '',
+        'Call Delay?': lead.callDelay || 'No',
+        'Site Visit?': lead.siteVisit || 'No',
+        'Booked?': lead.booked || 'No',
+        'Lead Quality': lead.quality || '',
+        'Site Visit Date': lead.siteVisitDate || '',
+        'Old Project': lead.oldProject || '',
+        'Transfer Reason': lead.transferReason || '',
+        'Transferred': lead.transferred || 'No',
+        'Transfer Time': lead.transferTime || '',
+        'Size': lead.size || '',
+        'Budget': lead.budget || '',
+        'Purpose': lead.purpose || '',
+        'Priority': lead.priority || '',
+        'Work Location': lead.workLocation || ''
+      };
+      
+      // Map the data to the correct columns based on header names
+      headers.forEach((header, index) => {
+        if (columnMap.hasOwnProperty(header)) {
+          rowData[index] = columnMap[header];
+        }
+      });
+      
+      // Add feedback columns if they exist in the lead object
+      for (let i = 1; i <= 5; i++) {
+        const feedbackKey = `feedback${i}`;
+        const timeKey = `time${i}`;
+        const feedbackHeader = `Feedback ${i}`;
+        const timeHeader = `Time ${i}`;
+        
+        const feedbackIndex = headers.indexOf(feedbackHeader);
+        const timeIndex = headers.indexOf(timeHeader);
+        
+        if (feedbackIndex !== -1 && lead[feedbackKey]) {
+          rowData[feedbackIndex] = lead[feedbackKey];
+        }
+        
+        if (timeIndex !== -1 && lead[timeKey]) {
+          rowData[timeIndex] = lead[timeKey];
+        }
+      }
+      
+      // Write the row data to the sheet
+      sheet.getRange(newRow, 1, 1, rowData.length).setValues([rowData]);
 
       newRow++;
       message.markRead();
     });
   });
 }
+function removeDuplicatePhonesInLeads() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return; // No data besides header
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const phoneCol = headers.indexOf("Phone");
+  if (phoneCol === -1) {
+    Logger.log("Phone column not found");
+    return;
+  }
+
+  // Get phone value from last row
+  const phone = (sheet.getRange(lastRow, phoneCol + 1).getValue() || "").toString().trim();
+  if (!phone) return; // Skip if blank
+
+  // Get all phones above the last row
+  const abovePhones = sheet.getRange(2, phoneCol + 1, lastRow - 2).getValues().flat().map(p => (p || "").toString().trim());
+
+  // If found above, delete the last row
+  if (abovePhones.includes(phone)) {
+    sheet.deleteRow(lastRow);
+    Logger.log(`Deleted duplicate row ${lastRow} with phone: ${phone}`);
+  }
+}
+
+
+
+
 function extract(text, start, end) {
   try {
     const s = text.indexOf(start);
@@ -266,43 +350,196 @@ function assignUnassignedLeadsWithTeamStatus() {
     }
   }
 }
-
-
 function markCallDelays() {
+  const tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone() || 'Asia/Kolkata';
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
   const data = sheet.getDataRange().getValues();
   const now = new Date();
 
-
   for (let row = 1; row < data.length; row++) {
-    const assignedTo = data[row][7];      // Column H
-    const assignedTime = data[row][9];    // Column J
-    const called = (data[row][10] || "").toString().toLowerCase(); // Column K
-    const callDelayStatus = (data[row][12] || "").toString().toLowerCase(); // Column M
-
+    const assignedTo = data[row][7];                    // Col H
+    const assignedTime = data[row][9];                  // Col J (Date)
+    const called = (data[row][10] || "").toString().toLowerCase();    // Col K
+    const callDelayStatus = (data[row][12] || "").toString().toLowerCase(); // Col M
 
     if (!assignedTo || !assignedTime || !(assignedTime instanceof Date)) continue;
 
-
-    const delayCell = sheet.getRange(row + 1, 13); // Column M
-    const diffMins = (now - assignedTime) / 60000;
-
-
-    // Skip if already marked
+    // Skip if already decided
     if (callDelayStatus === "delayed" || callDelayStatus === "on time") continue;
 
+    const delayCell = sheet.getRange(row + 1, 13); // Col M
 
     // Treat these values as on-time:
     const onTimeKeywords = ["yes", "incorrect", "not answered"];
-
-
     if (onTimeKeywords.includes(called)) {
       delayCell.setValue("On Time").setFontColor("green");
-    } else if (diffMins >= 10) {
+      continue;
+    }
+
+    // --- RULE A: If assigned after-hours (18:30–24:00 OR 00:00–09:30),
+    // give grace until next working day 12:00 PM.
+    if (isAfterHours(assignedTime, tz)) {
+      const deadline = nextWorkingNoon(assignedTime, tz);
+      if (now >= deadline) {
+        delayCell.setValue("Delayed").setFontColor("red");
+      }
+      continue; // don't check 10-minute rule for after-hours leads
+    }
+
+    // --- RULE B: Assigned within working hours (09:30–18:30)
+    // Apply 10-minute rule using "effective" minutes (exclude 13:00–14:00).
+    const effectiveMins = effectiveMinutesSince(assignedTime, now, tz);
+    if (effectiveMins >= 10) {
       delayCell.setValue("Delayed").setFontColor("red");
     }
   }
 }
+
+/** Returns true if assignedTime is outside 09:30–18:30 (local tz). */
+function isAfterHours(d, tz) {
+  const t = toLocal(d, tz);
+  const minutes = t.getHours() * 60 + t.getMinutes();
+  const start = 9 * 60 + 30;   // 09:30
+  const end = 18 * 60 + 30;    // 18:30
+  return (minutes < start) || (minutes >= end);
+}
+
+/** Returns a Date at next working day's 12:00 PM local time. */
+function nextWorkingNoon(d, tz) {
+  const t = toLocal(d, tz);
+  const next = new Date(t);
+  next.setDate(t.getDate() + (t.getHours() >= 18 ? 1 : (t.getHours() < 9 || (t.getHours() === 9 && t.getMinutes() < 30) ? 0 : 1)));
+  // If assigned between 00:00–09:30, same day noon; if after 18:30, next day noon.
+  const mins = t.getHours() * 60 + t.getMinutes();
+  if (mins < (9 * 60 + 30)) {
+    // same day noon
+    setTimeLocal(next, 12, 0, tz);
+  } else {
+    // next day noon
+    setTimeLocal(next, 12, 0, tz);
+  }
+  return toUtc(next, tz);
+}
+
+/**
+ * Effective minutes between start and end, counting only:
+ * - Working hours window 09:30–18:30
+ * - EXCLUDING freeze window 13:00–14:00
+ */
+function effectiveMinutesSince(startUTC, endUTC, tz) {
+  // Clip the window to [startUTC, endUTC]
+  let total = 0;
+  const oneDay = 24 * 60 * 60 * 1000;
+
+  // Iterate day-by-day, but we almost always finish in same day for 10-min rule.
+  let cursor = new Date(startUTC);
+  while (cursor < endUTC) {
+    const local = toLocal(cursor, tz);
+    const dayStart = dayBoundary(local, tz); // 00:00 local for that day
+
+    // Working window for this day
+    const workStart = withTime(dayStart, 9, 30, tz);   // 09:30
+    const workEnd   = withTime(dayStart, 18, 30, tz);  // 18:30
+
+    // Freeze window 13:00–14:00
+    const freezeStart = withTime(dayStart, 13, 0, tz);
+    const freezeEnd   = withTime(dayStart, 14, 0, tz);
+
+    // Overlap of [cursor, endUTC] with [workStart, workEnd], minus freeze overlap
+    const dayEnd = new Date(Math.min(workEnd.getTime(), endUTC.getTime()));
+    const dayStartClipped = new Date(Math.max(workStart.getTime(), startUTC.getTime()));
+
+    let dayMins = 0;
+    if (dayEnd > dayStartClipped) {
+      const workOverlap = (dayEnd - dayStartClipped) / 60000;
+
+      const freezeOverlap = overlapMinutes(
+        dayStartClipped, dayEnd,
+        freezeStart, freezeEnd
+      );
+
+      dayMins = Math.max(0, workOverlap - freezeOverlap);
+    }
+
+    total += dayMins;
+
+    // Move cursor to next local day 00:00
+    const nextLocalMidnight = new Date(dayStart.getTime() + oneDay);
+    cursor = toUtc(nextLocalMidnight, tz);
+  }
+
+  return total;
+}
+
+// ---------- date helpers ----------
+function toLocal(d, tz) {
+  return new Date(Utilities.formatDate(d, tz, "yyyy/MM/dd HH:mm:ss"));
+}
+function toUtc(localDate, tz) {
+  // Interpret localDate's displayed time in tz and convert back to UTC Date
+  const y = localDate.getFullYear();
+  const m = localDate.getMonth();
+  const dd = localDate.getDate();
+  const hh = localDate.getHours();
+  const mm = localDate.getMinutes();
+  const ss = localDate.getSeconds();
+  const asString = Utilities.formatDate(new Date(y, m, dd, hh, mm, ss), tz, "yyyy/MM/dd HH:mm:ss");
+  return new Date(asString); // Apps Script treats this as UTC-equivalent Date object
+}
+function dayBoundary(localDate, tz) {
+  const d = new Date(localDate);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function withTime(localMidnight, h, m, tz) {
+  const d = new Date(localMidnight);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+function setTimeLocal(localDate, h, m, tz) {
+  localDate.setHours(h, m, 0, 0);
+}
+function overlapMinutes(aStart, aEnd, bStart, bEnd) {
+  const start = Math.max(aStart.getTime(), bStart.getTime());
+  const end = Math.min(aEnd.getTime(), bEnd.getTime());
+  return end > start ? (end - start) / 60000 : 0;
+}
+
+// function markCallDelays() {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
+//   const data = sheet.getDataRange().getValues();
+//   const now = new Date();
+
+
+//   for (let row = 1; row < data.length; row++) {
+//     const assignedTo = data[row][7];      // Column H
+//     const assignedTime = data[row][9];    // Column J
+//     const called = (data[row][10] || "").toString().toLowerCase(); // Column K
+//     const callDelayStatus = (data[row][12] || "").toString().toLowerCase(); // Column M
+
+
+//     if (!assignedTo || !assignedTime || !(assignedTime instanceof Date)) continue;
+
+
+//     const delayCell = sheet.getRange(row + 1, 13); // Column M
+//     const diffMins = (now - assignedTime) / 60000;
+
+
+//     // Skip if already marked
+//     if (callDelayStatus === "delayed" || callDelayStatus === "on time") continue;
+
+
+//     // Treat these values as on-time:
+//     const onTimeKeywords = ["yes", "incorrect", "not answered"];
+
+
+//     if (onTimeKeywords.includes(called)) {
+//       delayCell.setValue("On Time").setFontColor("green");
+//     } else if (diffMins >= 10) {
+//       delayCell.setValue("Delayed").setFontColor("red");
+//     }
+//   }
+// }
 
 
 function logBreak() {
@@ -364,20 +601,34 @@ function logBreak() {
 
 function updatePerformanceTracker() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const leadSheet = ss.getSheetByName("Leads");
+  const leadSheet = ss.getSheetByName("Leads");          // Auto Leads
+  const manualSheet = ss.getSheetByName("Manual Leads"); // Manual Leads
   const perfSheet = ss.getSheetByName("Performance Tracker");
   const liveSheet = ss.getSheetByName("Live Status");
 
-
   const leads = leadSheet.getDataRange().getValues();
+  const manualLeads = manualSheet.getDataRange().getValues();
   const live = liveSheet.getDataRange().getValues();
   const users = perfSheet.getRange(2, 1, perfSheet.getLastRow() - 1).getValues().map(row => row[0]); // Names
 
+  // === Build email → name map from Auto Leads ===
+  const headers = leads[0];
+  const rows = leads.slice(1);
+  const assignedToCol = headers.indexOf("Assigned To");
+  const assignedEmailCol = headers.indexOf("Assigned Email");
+  const siteCol = headers.indexOf("Site Visit?");
+  const bookedCol = headers.indexOf("Booked?");
+  const delayCol = headers.indexOf("Call Delay?");
 
+  const emailToName = {};
+  rows.forEach(row => {
+    const name = (row[assignedToCol] || "").trim();
+    const email = (row[assignedEmailCol] || "").toString().trim().toLowerCase();
+    if (name && email) emailToName[email] = name;
+  });
+
+  // === Initialize tracking object keyed by name ===
   const performance = {};
-
-
-  // Initialize tracking object
   users.forEach(name => {
     performance[name] = {
       totalLeads: 0,
@@ -389,47 +640,52 @@ function updatePerformanceTracker() {
     };
   });
 
-
-  // === Pull lead data
-  for (let i = 1; i < leads.length; i++) {
-    const assignedTo = leads[i][7];
-    const delay = (leads[i][12] || "").toLowerCase();
-    const siteVisit = (leads[i][13] || "").toLowerCase();
-    const booked = (leads[i][14] || "").toLowerCase();
-
-
-    if (assignedTo && performance[assignedTo] !== undefined) {
-      performance[assignedTo].totalLeads++;
-
-
-      if (delay === "delayed") performance[assignedTo].delays++;
-      if (siteVisit === "yes") performance[assignedTo].siteVisits++;
-      if (booked === "yes") performance[assignedTo].bookings++;
+  // === Process Auto Leads (map email → name) ===
+  rows.forEach(row => {
+    const email = (row[assignedEmailCol] || "").toString().trim().toLowerCase();
+    const name = emailToName[email];
+    if (name && performance[name] !== undefined) {
+      performance[name].totalLeads++;
+      if (/^delayed$/i.test(row[delayCol] || "")) performance[name].delays++;
+      if (/^yes$/i.test(row[siteCol] || "")) performance[name].siteVisits++;
+      if (/^yes$/i.test(row[bookedCol] || "")) performance[name].bookings++;
     }
-  }
+  });
 
+  // === Process Manual Leads (Assignee is Email → map to Name) ===
+  const mHeaders = manualLeads[0];
+  const mRows = manualLeads.slice(1);
+  const mAssigneeCol = mHeaders.indexOf("Assignee");
+  const mSiteCol = mHeaders.indexOf("Site Visit?");
+  const mBookedCol = mHeaders.indexOf("Booked?");
 
-  // === Pull break data from Live Status
+  mRows.forEach(row => {
+    const email = (row[mAssigneeCol] || "").toString().trim().toLowerCase();
+    const name = emailToName[email];
+    if (name && performance[name] !== undefined) {
+      performance[name].totalLeads++;
+      if (/^yes$/i.test(row[mSiteCol] || "")) performance[name].siteVisits++;
+      if (/^yes$/i.test(row[mBookedCol] || "")) performance[name].bookings++;
+    }
+  });
+
+  // === Pull break data from Live Status (Email → Name) ===
   for (let j = 1; j < live.length; j++) {
-    const name = live[j][0];
+    const email = (live[j][1] || "").toString().trim().toLowerCase(); // assume col B = Email
     const breakMin = parseFloat(live[j][3] || 0);
-    if (performance[name] !== undefined) {
+    const name = emailToName[email];
+    if (name && performance[name] !== undefined) {
       performance[name].breakMinutes = breakMin;
     }
   }
 
-
-  // === Write everything to Performance Tracker
+  // === Write everything to Performance Tracker (by Name) ===
   for (let i = 0; i < users.length; i++) {
     const name = users[i];
     const perf = performance[name];
-
-
-    const row = i + 2; // Because header is in row 1
-
+    const row = i + 2; // Because header is row 1
 
     const score = (perf.bookings * 2) + (perf.siteVisits * 1) - (perf.delays * 0.25) - (perf.breakMinutes * 0.01);
-
 
     perfSheet.getRange(row, 2).setValue(perf.totalLeads);
     perfSheet.getRange(row, 3).setValue(perf.delays);
@@ -440,6 +696,7 @@ function updatePerformanceTracker() {
     perfSheet.getRange(row, 8).setValue(score.toFixed(2));
   }
 }
+
 
 function sendAssignmentEmail(row) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Leads");
@@ -748,7 +1005,7 @@ function doGet(e) {
 
       userLeads.forEach(row => {
         if (row[calledCol] === "Yes") totalCalls++;
-        if (row[delayCol] === "Yes") delays++;
+        if (row[delayCol] === "Delayed") delays++;
         if (row[siteCol] === "Yes") siteVisits++;
         if (row[bookedCol] === "Yes") bookings++;
       });
@@ -759,7 +1016,7 @@ function doGet(e) {
       const breakMinutes = statusRow ? statusRow[3] || 0 : 0;
 
 
-      const score = siteVisits * 1 + bookings * 2 - delays * 0.25 - breakMinutes * 0.01;
+      const score = siteVisits * 2 + bookings * 5 - delays * 0.25 - breakMinutes * 0.01;
 
 
       return ContentService.createTextOutput(JSON.stringify({
@@ -768,7 +1025,7 @@ function doGet(e) {
         siteVisits,
         bookings,
         breakMinutes,
-        score: Math.round(score * 100) / 100
+        score: Math.round(score * 10) / 10
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -1224,6 +1481,7 @@ if (action === "getAdminStats") {
   const member = e.parameter.member || "";
   const dateRange = e.parameter.dateRange || "";
 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Leads");
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
@@ -1237,7 +1495,7 @@ if (action === "getAdminStats") {
   const manualRows = manualData.slice(1);
   const manualIdx = (col) => manualHeaders.indexOf(col);
 
-  // === Filter auto leads (date/project/member logic)
+  // === Date filter setup
   const now = new Date();
   let fromDate = new Date("2000-01-01");
 
@@ -1245,6 +1503,7 @@ if (action === "getAdminStats") {
   else if (dateRange === "30d") fromDate.setDate(now.getDate() - 30);
   else if (dateRange === "thisMonth") fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // === Filter Auto Leads
   const filteredAuto = leads.filter(row => {
     const timeStr = row[idx("Assigned Time")];
     if (!timeStr) return false;
@@ -1257,18 +1516,27 @@ if (action === "getAdminStats") {
     return projMatch && memberMatch && dateMatch;
   });
 
+  // === Filter Manual Leads with date check
   const filteredManual = manualRows.filter(row => {
     const projMatch = !project || row[manualIdx("Project")] === project;
     const memberMatch = !member || row[manualIdx("Assignee")] === member;
-    return projMatch && memberMatch; // ❗No time filter since "Assigned Time" is missing
+
+    // Try "Date" or "Created At" columns
+    let dateMatch = true;
+    if (dateRange) {
+      let dateStr = row[manualIdx("Date")] || row[manualIdx("Created At")];
+      if (dateStr) {
+        const createdDate = new Date(dateStr);
+        dateMatch = createdDate >= fromDate && !isNaN(createdDate);
+      } else {
+        dateMatch = false; // No date = exclude if filtering
+      }
+    }
+
+    return projMatch && memberMatch && dateMatch;
   });
 
-  // === Initialize maps with all quality types including RNR
-  const teamMap = {};
-  const qualityMap = { WIP: 0, Warm: 0, Cold: 0, RNR: 0, Invalid: 0, Junk: 0 };
-  const teamQualityMap = {};
-  
-  // Helper function to normalize quality values
+  // === Normalize quality
   const normalizeQuality = (quality) => {
     if (!quality) return null;
     const q = quality.toString().trim().toLowerCase();
@@ -1281,233 +1549,117 @@ if (action === "getAdminStats") {
     return null;
   };
 
-  // === Count auto stats
+  const isYes = (val) => (val || "").toString().trim().toLowerCase() === "yes";
+
+  const teamMap = {};
+  const qualityMap = { WIP: 0, Warm: 0, Cold: 0, RNR: 0, Invalid: 0, Junk: 0 };
+  const teamQualityMap = {};
+  const emailToName = {};
+
+  // === Process Auto Leads
   filteredAuto.forEach(row => {
-    const name = row[idx("Assigned To")] || "Unknown";
-    if (!teamMap[name]) teamMap[name] = {
-      name, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0
-    };
-    teamMap[name].leads++;
-    teamMap[name].autoLeads++;
-    if (row[idx("Called?")] === "Yes") teamMap[name].called++;
-    if (row[idx("Site Visit?")] === "Yes") teamMap[name].siteVisits++;
-    if (row[idx("Booked?")] === "Yes") teamMap[name].bookings++;
-    if (row[idx("Call Delay?")] === "Yes") teamMap[name].callDelay++;
+    const email = (row[idx("Assigned Email")] || "").toString().trim().toLowerCase();
+    const name = (row[idx("Assigned To")] || "").toString().trim();
+    if (email && name) emailToName[email] = name;
 
-    // Process Lead Quality
-    const rawQuality = row[idx("Lead Quality")] || "";
-    const normalizedQuality = normalizeQuality(rawQuality);
-    
+    const key = email || name;
+    if (!teamMap[key]) teamMap[key] = { name: name || email, email, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
+
+    teamMap[key].leads++;
+    teamMap[key].autoLeads++;
+    if (isYes(row[idx("Called?")])) teamMap[key].called++;
+    if (isYes(row[idx("Site Visit?")])) teamMap[key].siteVisits++;
+    if (isYes(row[idx("Booked?")])) teamMap[key].bookings++;
+    if (isYes(row[idx("Call Delay?")])) teamMap[key].callDelay++;
+
+    const normalizedQuality = normalizeQuality(row[idx("Lead Quality")]);
     if (normalizedQuality) {
-      // Update quality map
       qualityMap[normalizedQuality] = (qualityMap[normalizedQuality] || 0) + 1;
-      
-      // Update team quality map
-      if (!teamQualityMap[name]) teamQualityMap[name] = {};
-      const key = `auto${normalizedQuality}`; // autoWIP, autoWarm, autoRNR, etc.
-      teamQualityMap[name][key] = (teamQualityMap[name][key] || 0) + 1;
-      
-      // Log for debugging
-      console.log(`Processed auto lead quality: ${rawQuality} -> ${normalizedQuality} for ${name}`);
-    } else if (rawQuality) {
-      console.warn(`Unrecognized quality value: ${rawQuality} for lead assigned to ${name}`);
+      if (!teamQualityMap[key]) teamQualityMap[key] = {};
+      const qKey = `auto${normalizedQuality}`;
+      teamQualityMap[key][qKey] = (teamQualityMap[key][qKey] || 0) + 1;
     }
-
-
-
   });
 
-  // === Count manual stats with proper quality handling
+  // === Process Manual Leads
   filteredManual.forEach(row => {
-    const name = row[manualIdx("Assignee")] || "Unknown";
-    if (!teamMap[name]) {
-      teamMap[name] = {
-        name, 
-        leads: 0, 
-        called: 0, 
-        siteVisits: 0, 
-        bookings: 0, 
-        callDelay: 0, 
-        autoLeads: 0, 
-        manualLeads: 0
-      };
-    }
-    teamMap[name].leads++;
-    teamMap[name].manualLeads++;
+    const email = (row[manualIdx("Assignee Email")] || "").toString().trim().toLowerCase();
+    const name = emailToName[email] || (row[manualIdx("Assignee")] || "").toString().trim();
+    const key = email || name;
 
-    // Process Lead Quality for manual leads
-    const rawQuality = row[manualIdx("Lead Quality")] || "";
-    const normalizedQuality = normalizeQuality(rawQuality);
-    
+    if (!teamMap[key]) teamMap[key] = { name, email, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
+
+    teamMap[key].leads++;
+    teamMap[key].manualLeads++;
+    if (isYes(row[manualIdx("Site Visit?")])) teamMap[key].siteVisits++;
+    if (isYes(row[manualIdx("Booked?")])) teamMap[key].bookings++;
+
+    const normalizedQuality = normalizeQuality(row[manualIdx("Lead Quality")]);
     if (normalizedQuality) {
-      if (!teamQualityMap[name]) teamQualityMap[name] = {};
-      const key = `manual${normalizedQuality}`; // manualWIP, manualWarm, manualRNR, etc.
-      teamQualityMap[name][key] = (teamQualityMap[name][key] || 0) + 1;
-      
-      // Also update the quality map for the pie chart
       qualityMap[normalizedQuality] = (qualityMap[normalizedQuality] || 0) + 1;
-      
-      console.log(`Processed manual lead quality: ${rawQuality} -> ${normalizedQuality} for ${name}`);
-    } else if (rawQuality) {
-      console.warn(`Unrecognized quality value in manual leads: ${rawQuality} for ${name}`);
+      if (!teamQualityMap[key]) teamQualityMap[key] = {};
+      const qKey = `manual${normalizedQuality}`;
+      teamQualityMap[key][qKey] = (teamQualityMap[key][qKey] || 0) + 1;
     }
   });
 
-  // Process team stats with all quality types
+  // === Build Leaderboard
   const teamStats = Object.values(teamMap).map(stat => {
-    const qualities = teamQualityMap[stat.name] || {};
-    
-    // Auto lead qualities
-    const autoWIP = qualities.autoWIP || 0;
-    const autoWarm = qualities.autoWarm || 0;
-    const autoCold = qualities.autoCold || 0;
-    const autoRNR = qualities.autoRNR || 0;
-    const autoInvalid = qualities.autoInvalid || 0;
-    const autoJunk = qualities.autoJunk || 0;
-    
-    // Manual lead qualities
-    const manualWIP = qualities.manualWIP || 0;
-    const manualWarm = qualities.manualWarm || 0;
-    const manualCold = qualities.manualCold || 0;
-    const manualRNR = qualities.manualRNR || 0;
-    const manualInvalid = qualities.manualInvalid || 0;
-    const manualJunk = qualities.manualJunk || 0;
-    
-    // Calculate score (you can adjust weights as needed)
-    const score = (stat.bookings || 0) * 100
-                + (stat.siteVisits || 0) * 10
-                + (autoWarm + manualWarm) * 2  // Reward warm leads
-                + (autoWIP + manualWIP) * 1;   // Reward WIP leads
-
-  return {
-    ...stat,
-    // Auto lead metrics
-    autoWIP,
-    autoWarm,
-    autoCold,
-    autoRNR,
-    autoInvalid,
-    autoJunk,
-    
-    // Manual lead metrics
-    manualWIP,
-    manualWarm,
-    manualCold,
-    manualRNR,
-    manualInvalid,
-    manualJunk,
-    
-    // Combined metrics (auto + manual)
-    totalWIP: autoWIP + manualWIP,
-    totalWarm: autoWarm + manualWarm,
-    totalCold: autoCold + manualCold,
-    totalRNR: autoRNR + manualRNR,
-    totalInvalid: autoInvalid + manualInvalid,
-    totalJunk: autoJunk + manualJunk,
-    
-    // Score
-    score
-  };
-});
-
-
-  // === Booking Trend
-  const bookingTrendMap = {};
-  filteredAuto.forEach(row => {
-    const dt = new Date(row[idx("Assigned Time")]);
-    const key = `${dt.getFullYear()}-${(dt.getMonth() + 1).toString().padStart(2, '0')}-${dt.getDate().toString().padStart(2, '0')}`;
-    if (!bookingTrendMap[key]) bookingTrendMap[key] = 0;
-    if (row[idx("Booked?")] === "Yes") bookingTrendMap[key]++;
+    const q = teamQualityMap[stat.email || stat.name] || {};
+    return {
+      ...stat,
+      autoWIP: q.autoWIP || 0,
+      autoWarm: q.autoWarm || 0,
+      autoCold: q.autoCold || 0,
+      autoRNR: q.autoRNR || 0,
+      autoInvalid: q.autoInvalid || 0,
+      autoJunk: q.autoJunk || 0,
+      manualWIP: q.manualWIP || 0,
+      manualWarm: q.manualWarm || 0,
+      manualCold: q.manualCold || 0,
+      manualRNR: q.manualRNR || 0,
+      manualInvalid: q.manualInvalid || 0,
+      manualJunk: q.manualJunk || 0,
+      totalWIP: (q.autoWIP || 0) + (q.manualWIP || 0),
+      totalWarm: (q.autoWarm || 0) + (q.manualWarm || 0),
+      totalCold: (q.autoCold || 0) + (q.manualCold || 0),
+      totalRNR: (q.autoRNR || 0) + (q.manualRNR || 0),
+      totalInvalid: (q.autoInvalid || 0) + (q.manualInvalid || 0),
+      totalJunk: (q.autoJunk || 0) + (q.manualJunk || 0),
+      score: (stat.bookings * 5) + (stat.siteVisits * 2) 
+    };
   });
 
-  const bookingTrend = Object.keys(bookingTrendMap).map(date => ({
-    date,
-    bookings: bookingTrendMap[date]
-  }));
-
-  // === Quality distribution for dashboard cards (ensure all categories are included)
-  const allQualityTypes = ['WIP', 'Warm', 'Cold', 'RNR', 'Junk', 'Invalid'];
-  const qualityDistribution = allQualityTypes.map(type => ({
-    name: type,
-    value: qualityMap[type] || 0
-  })).filter(item => item.value > 0); // Only include categories with counts > 0
-  
-  // Log quality distribution for debugging
-  console.log('Quality Distribution:', JSON.stringify(qualityDistribution, null, 2));
-
-  // === Count global summary fields
   const autoLeadsCount = filteredAuto.length;
   const manualLeadsCount = filteredManual.length;
   const totalLeadsCount = autoLeadsCount + manualLeadsCount;
 
-  // Process auto leads quality (additional pass to ensure all are counted)
-  const autoQualityCol = idx("Lead Quality");
-  filteredAuto.forEach(row => {
-    const rawQuality = row[autoQualityCol] || "";
-    const normalizedQuality = normalizeQuality(rawQuality);
-    const assignee = row[idx("Assigned To")] || "Unknown";
-    
-    if (normalizedQuality) {
-      if (!teamQualityMap[assignee]) teamQualityMap[assignee] = {};
-      const key = `auto${normalizedQuality}`;
-      teamQualityMap[assignee][key] = (teamQualityMap[assignee][key] || 0) + 1;
-      
-      // Ensure the quality is in the quality map
-      if (!qualityMap[normalizedQuality]) {
-        qualityMap[normalizedQuality] = 0;
-      }
-      qualityMap[normalizedQuality]++;
-    }
-  });
+  const totalBookings =
+    filteredAuto.filter(r => isYes(r[idx("Booked?")])).length +
+    filteredManual.filter(r => isYes(r[manualIdx("Booked?")])).length;
 
+  const totalSiteVisits =
+    filteredAuto.filter(r => isYes(r[idx("Site Visit?")])).length +
+    filteredManual.filter(r => isYes(r[manualIdx("Site Visit?")])).length;
 
-  // Process manual leads quality (additional pass to ensure all are counted)
-  filteredManual.forEach(row => {
-    const rawQuality = row[manualIdx("Lead Quality")] || "";
-    const normalizedQuality = normalizeQuality(rawQuality);
-    const assignee = row[manualIdx("Assignee")] || "Unknown";
-    
-    if (normalizedQuality) {
-      if (!teamQualityMap[assignee]) teamQualityMap[assignee] = {};
-      const key = `manual${normalizedQuality}`;
-      teamQualityMap[assignee][key] = (teamQualityMap[assignee][key] || 0) + 1;
-      
-      // Ensure the quality is in the quality map
-      if (!qualityMap[normalizedQuality]) {
-        qualityMap[normalizedQuality] = 0;
-      }
-      qualityMap[normalizedQuality]++;
-    }
-  });
-
-  const totalBookings = filteredAuto.filter(row => row[idx("Booked?")] === "Yes").length;
-  const totalSiteVisits = filteredAuto.filter(row => row[idx("Site Visit?")] === "Yes").length;
   const junkCount = qualityMap["Junk"] || 0;
   const effectiveLeads = totalLeadsCount - junkCount;
   const conversionPercent = effectiveLeads > 0
     ? ((totalBookings / effectiveLeads) * 100).toFixed(1)
     : "0.0";
 
-
   return ContentService.createTextOutput(JSON.stringify({
-  teamStats,
-  bookingTrend,
-  qualityDistribution,
-  autoLeadsCount,
-  manualLeadsCount,
-  totalLeadsCount,
-  siteVisitsCount: totalSiteVisits,
-  bookingsCount: totalBookings,
-  conversionPercent,
-  autoInvalid: qualityMap.Invalid || 0,
-  autoJunk: qualityMap.Junk || 0,
-  manualInvalid: Object.values(teamQualityMap).reduce((sum, q) => sum + (q.manualInvalid || 0), 0),
-  manualJunk: Object.values(teamQualityMap).reduce((sum, q) => sum + (q.manualJunk || 0), 0),
-  autoWIP: qualityMap.WIP || 0,
-  autoWarm: qualityMap.Warm || 0,
-  autoCold: qualityMap.Cold || 0,
-})).setMimeType(ContentService.MimeType.JSON);
+    teamStats,
+    autoLeadsCount,
+    manualLeadsCount,
+    totalLeadsCount,
+    siteVisitsCount: totalSiteVisits,
+    bookingsCount: totalBookings,
+    conversionPercent,
+    qualityDistribution: Object.keys(qualityMap).map(type => ({ name: type, value: qualityMap[type] }))
+  })).setMimeType(ContentService.MimeType.JSON);
 }
+
 
 
 if (action === "updateManualLead") {
@@ -1578,7 +1730,7 @@ if (action === "getLeaderboard") {
   // score: +1 for visit, +2 for booking
   for (let key in map) {
     const m = map[key];
-    m.score = m.siteVisits * 1 + m.bookings * 2;
+    m.score = m.siteVisits * 2 + m.bookings * 5;
   }
 
 
