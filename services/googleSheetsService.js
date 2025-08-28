@@ -30,45 +30,55 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
   try {
     const sheets = getGoogleSheetsAPI();
 
-    // Define the columns we want to update from Meta lead form
-    const metaLeadColumns = [
-      'Lead ID', 'Project', 'Source', 'Name', 'Email', 'Phone', 'City',
-      'Size', 'Budget', 'Purpose', 'Priority', 'Work Location'
-    ];
-    
-    // Get all headers to maintain column order
-    const headers = await getSheetHeaders(spreadsheetId);
-    if (!headers || headers.length === 0) {
-      throw new Error('Failed to get sheet headers');
-    }
+    // Create a row with empty values for all columns (assuming we have at least 36 columns)
+    const rowData = new Array(36).fill('');
 
-    // Create a row with empty values for all columns
-    const rowData = new Array(headers.length).fill('');
-
-    // Map only the Meta lead fields we want to update
-    const metaLeadData = {
-      'Lead ID': lead.leadId || `LEAD-${Date.now()}`,
-      'Project': lead.project || 'Not Specified',
-      'Source': lead.source || 'Facebook Lead',
-      'Name': lead.name || '',
-      'Email': lead.email || '',
-      'Phone': lead.phone || '',
-      'City': lead.city || '',
-      'Size': lead.size || '',
-      'Budget': lead.budget || '',
-      'Purpose': lead.purpose || '',
-      'Priority': lead.priority || 'Medium',
-      'Work Location': lead.workLocation || ''
+    // Map lead data to specific column indices (0-based)
+    // A:1, B:2, ..., Z:26, AA:27, AB:28, AC:29, AD:30, AE:31, AF:32, AG:33, AH:34, AI:35, AJ:36
+    const columnMapping = {
+      // Column A (1-based index 0)
+      0: lead.leadId || `LEAD-${Date.now()}`,  // Lead ID
+      
+      // Column B (1-based index 1)
+      1: lead.project || 'Not Specified',  // Project
+      
+      // Column C (1-based index 2)
+      2: lead.source || 'Facebook Lead',  // Source
+      
+      // Column D (1-based index 3)
+      3: lead.name || '',  // Name
+      
+      // Column E (1-based index 4)
+      4: lead.email || '',  // Email
+      
+      // Column F (1-based index 5)
+      5: lead.phone || '',  // Phone
+      
+      // Column G (1-based index 6)
+      6: lead.city || '',  // City
+      
+      // Column AF (1-based index 31)
+      31: lead.size || '',  // Size
+      
+      // Column AG (1-based index 32)
+      32: lead.budget || '',  // Budget
+      
+      // Column AH (1-based index 33)
+      33: lead.purpose || '',  // Purpose
+      
+      // Column AI (1-based index 34)
+      34: lead.priority || 'Medium',  // Priority
+      
+      // Column AJ (1-based index 35)
+      35: lead.workLocation || ''  // Work Location
     };
 
-    // Map the data to the correct columns based on header names
-    headers.forEach((header, index) => {
-      if (metaLeadData.hasOwnProperty(header) && metaLeadColumns.includes(header)) {
-        rowData[index] = metaLeadData[header];
-      }
+    // Apply the mapping to the row data
+    Object.entries(columnMapping).forEach(([index, value]) => {
+      rowData[parseInt(index)] = value;
     });
     
-    console.log('📝 Appending lead with data:', metaLeadData);
+    console.log('📝 Appending lead with data:', columnMapping);
 
     const request = {
       spreadsheetId,

@@ -234,32 +234,54 @@ router.post('/fb-webhook', async (req, res) => {
                     // Store the raw field value
                     lead[f.name] = value;
                     
-                    // Map fields based on common naming patterns
+                    // Map fields based on common naming patterns - expanded to match all possible Facebook form field names
                     const fieldMappings = {
-                      // Standard contact info
-                      name: ['full name', 'first name', 'name', 'contact name', 'your name'],
-                      email: ['email', 'email address', 'e-mail', 'e-mail address'],
-                      phone: ['phone', 'mobile', 'phone number', 'mobile number', 'contact number', 'whatsapp'],
-                      city: ['city', 'location', 'current city', 'residence city', 'preferred location'],
+                      // Standard contact info - expanded with more variations
+                      name: ['full name', 'first name', 'name', 'contact name', 'your name', 'full_name', 'first_name', 'contact_person'],
+                      email: ['email', 'email address', 'e-mail', 'e-mail address', 'emailid', 'email_id', 'contact_email'],
+                      phone: ['phone', 'mobile', 'phone number', 'mobile number', 'contact number', 'whatsapp', 
+                            'phone_no', 'mobile_no', 'contact_phone', 'whatsapp_number', 'contact', 'telephone'],
+                      city: ['city', 'location', 'current city', 'residence city', 'preferred location', 
+                           'residential_city', 'current_location', 'preferred_city', 'location_city'],
                       
-                      // Project details
-                      project: ['project', 'property', 'project name', 'project interested in', 'interested project'],
-                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin'],
+                      // Project details - expanded with more variations
+                      project: ['project', 'property', 'project name', 'project interested in', 'interested project',
+                              'project_name', 'property_name', 'interested_project', 'project_interest', 'project_interested_in'],
+                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin', 'source_of_lead', 
+                             'how_did_you_hear_about_us', 'lead_source', 'source_type'],
                       
-                      // Lead details
-                      size: ['size', 'property size', 'area', 'carpet area', 'built-up area', 'super built-up area'],
-                      budget: ['budget', 'price range', 'expected budget', 'investment range', 'affordability'],
-                      purpose: ['purpose', 'requirement', 'property purpose', 'end use', 'usage'],
-                      priority: ['priority', 'urgency', 'timeline', 'timeframe', 'when to buy'],
-                      workLocation: ['work location', 'office location', 'workplace', 'office area', 'job location'],
+                      // Lead details - expanded with more variations
+                      size: ['size', 'property size', 'area', 'carpet area', 'built-up area', 'super built-up area',
+                           'property_size', 'carpet_area', 'built_up_area', 'super_built_up_area', 'required_size',
+                           'carpet', 'builtup', 'superbuiltup', 'carpetarea', 'builtuparea', 'superbuiltuparea'],
+                            
+                      budget: ['budget', 'price range', 'expected budget', 'investment range', 'affordability',
+                             'price_range', 'expected_budget', 'investment_budget', 'budget_range', 'max_budget',
+                             'min_budget', 'total_budget', 'budget_in_lakhs', 'budget_in_crores'],
+                             
+                      purpose: ['purpose', 'requirement', 'property purpose', 'end use', 'usage', 'property_purpose',
+                              'end_use', 'property_type', 'purpose_of_investment', 'investment_purpose', 'usage_purpose'],
+                              
+                      priority: ['priority', 'urgency', 'timeline', 'timeframe', 'when to buy', 'buying_timeline',
+                               'purchase_urgency', 'time_to_purchase', 'purchase_timeline', 'when_planning_to_buy'],
+                               
+                      workLocation: ['work location', 'office location', 'workplace', 'office area', 'job location',
+                                   'office_location', 'work_address', 'job_location', 'office_city', 'work_city',
+                                   'current_work_location', 'preferred_work_location'],
                       
-                      // Additional fields
-                      called: ['called', 'contacted', 'follow up done'],
-                      callTime: ['call time', 'best time to call', 'preferred call time'],
-                      siteVisit: ['site visit', 'property visit', 'schedule visit', 'interested in site visit'],
-                      siteVisitDate: ['visit date', 'preferred date', 'date of visit', 'site visit date'],
-                      leadQuality: ['lead quality', 'lead score', 'hot/warm/cold', 'lead status'],
-                      notes: ['notes', 'comments', 'additional information', 'message', 'requirements']
+                      // Additional fields - expanded with more variations
+                      called: ['called', 'contacted', 'follow up done', 'contacted_status', 'is_called', 'followup_done'],
+                      callTime: ['call time', 'best time to call', 'preferred call time', 'best_time_to_call', 
+                               'preferred_time', 'callback_time', 'convenient_time'],
+                      siteVisit: ['site visit', 'property visit', 'schedule visit', 'interested in site visit',
+                                'site_visit', 'property_visit', 'schedule_visit', 'site_visit_interest',
+                                'interested_in_site_visit', 'visit_required'],
+                      siteVisitDate: ['visit date', 'preferred date', 'date of visit', 'site visit date',
+                                    'preferred_visit_date', 'visit_date', 'scheduled_visit_date', 'appointment_date'],
+                      leadQuality: ['lead quality', 'lead score', 'hot/warm/cold', 'lead status', 'lead_quality',
+                                  'lead_score', 'lead_status', 'lead_temperature', 'lead_rating'],
+                      notes: ['notes', 'comments', 'additional information', 'message', 'requirements',
+                             'additional_notes', 'special_requirements', 'comments_notes', 'additional_comments']
                     };
                     
                     // Apply field mappings
