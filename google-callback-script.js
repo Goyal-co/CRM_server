@@ -80,66 +80,85 @@ function extractLeadsFromGmail() {
       insertedFingerprints.push(leadFingerprint);
 
       const leadId = "LEAD-" + new Date().getTime();
-      // Get the headers to ensure we're mapping to the right columns
+      // Get all headers from the sheet
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
       
-      // Create a row with empty values matching the total number of columns
-      const rowData = new Array(headers.length).fill('');
-      
-      // Map the lead data to the correct columns based on header names
-      const columnMap = {
-        'Lead ID': leadId,
-        'Project': lead.project || '',
-        'Source': lead.source || 'Facebook Lead',
-        'Name': lead.name || '',
-        'Email': lead.email || '',
-        'Phone': lead.phone || '',
-        'City': lead.city || '',
-        'Assigned To': lead.assignedTo || '',
-        'Assigned Email': lead.assignedEmail || '',
-        'Assigned Time': lead.assignedTime || new Date().toISOString(),
-        'Called?': lead.called || 'No',
-        'Call Time': lead.callTime || '',
-        'Call Delay?': lead.callDelay || 'No',
-        'Site Visit?': lead.siteVisit || 'No',
-        'Booked?': lead.booked || 'No',
-        'Lead Quality': lead.quality || '',
-        'Site Visit Date': lead.siteVisitDate || '',
-        'Old Project': lead.oldProject || '',
-        'Transfer Reason': lead.transferReason || '',
-        'Transferred': lead.transferred || 'No',
-        'Transfer Time': lead.transferTime || '',
-        'Size': lead.size || '',
-        'Budget': lead.budget || '',
-        'Purpose': lead.purpose || '',
-        'Priority': lead.priority || '',
-        'Work Location': lead.workLocation || ''
-      };
-      
-      // Map the data to the correct columns based on header names
+      // Create a map of header names to their column indices (1-based)
+      const headerMap = {};
       headers.forEach((header, index) => {
-        if (columnMap.hasOwnProperty(header)) {
-          rowData[index] = columnMap[header];
-        }
+        headerMap[header.trim()] = index + 1; // Convert to 1-based index
       });
       
-      // Add feedback columns if they exist in the lead object
+      // Helper function to set cell value if column exists
+      const setCellValue = (header, value) => {
+        const colIndex = headerMap[header];
+        if (colIndex) {
+          sheet.getRange(newRow, colIndex).setValue(value);
+        }
+      };
+      
+      // Set values for each column
+      setCellValue('Lead ID', leadId);
+      setCellValue('Project', lead.project || 'Not Specified');
+      setCellValue('Source', lead.source || 'Facebook Lead');
+      setCellValue('Name', lead.name || '');
+      setCellValue('Email', lead.email || '');
+      setCellValue('Phone', lead.phone || '');
+      setCellValue('City', lead.city || '');
+      setCellValue('Assigned To', lead.assignedTo || '');
+      setCellValue('Assigned Email', lead.assignedEmail || '');
+      setCellValue('Assigned Time', lead.assignedTime || new Date().toISOString());
+      setCellValue('Called?', lead.called || 'No');
+      setCellValue('Call Time', lead.callTime || '');
+      setCellValue('Call Delay?', lead.callDelay || 'No');
+      setCellValue('Site Visit?', lead.siteVisit || 'No');
+      setCellValue('Booked?', lead.booked || 'No');
+      setCellValue('Lead Quality', lead.leadQuality || 'Cold');
+      
+      // Handle feedback and time entries
       for (let i = 1; i <= 5; i++) {
         const feedbackKey = `feedback${i}`;
         const timeKey = `time${i}`;
-        const feedbackHeader = `Feedback ${i}`;
-        const timeHeader = `Time ${i}`;
         
-        const feedbackIndex = headers.indexOf(feedbackHeader);
-        const timeIndex = headers.indexOf(timeHeader);
-        
-        if (feedbackIndex !== -1 && lead[feedbackKey]) {
-          rowData[feedbackIndex] = lead[feedbackKey];
+        if (lead[feedbackKey]) {
+          setCellValue(`Feedback ${i}`, lead[feedbackKey]);
         }
-        
-        if (timeIndex !== -1 && lead[timeKey]) {
-          rowData[timeIndex] = lead[timeKey];
+        if (lead[timeKey]) {
+          setCellValue(`Time ${i}`, lead[timeKey]);
         }
+      }
+      
+      // Set remaining fields
+      setCellValue('Site Visit Date', lead.siteVisitDate || '');
+      setCellValue('Old Project', lead.oldProject || '');
+      setCellValue('Transfer Reason', lead.transferReason || '');
+      setCellValue('Transferred', lead.transferred || 'No');
+      setCellValue('Transfer Time', lead.transferTime || '');
+      setCellValue('Size', lead.size || '');
+      setCellValue('Budget', lead.budget || '');
+      setCellValue('Purpose', lead.purpose || '');
+      setCellValue('Priority', lead.priority || 'Medium');
+      setCellValue('Work Location', lead.workLocation || '');
+      
+      // Format the new row
+      const lastCol = sheet.getLastColumn();
+      const formatRange = sheet.getRange(newRow, 1, 1, lastCol);
+      formatRange.setBorder(true, true, true, true, true, true);
+      formatRange.setVerticalAlignment('middle');
+      formatRange.setWrap(true);
+      
+      // Format date columns
+      const dateColumns = ['Assigned Time', 'Call Time', 'Time 1', 'Time 2', 'Time 3', 'Time 4', 'Time 5', 'Site Visit Date', 'Transfer Time'];
+      dateColumns.forEach(header => {
+        if (headerMap[header]) {
+          const col = headerMap[header];
+          sheet.getRange(newRow, col).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+        }
+      });
+      
+      // Format currency columns
+      if (headerMap['Budget']) {
+        sheet.getRange(newRow, headerMap['Budget']).setNumberFormat('₹#,##0');
       }
       
       // Write the row data to the sheet

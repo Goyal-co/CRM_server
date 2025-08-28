@@ -49,21 +49,45 @@ function normalizeProjectName(projectName) {
   return projectMappings[normalized] || normalized;
 }
 
-// Helper to map only required columns for Google Sheet
+// Helper to map all columns for Google Sheet with proper column order
 function mapLeadToSheetColumns(lead) {
   return {
-    leadId: lead.leadId || '',
-    project: normalizeProjectName(lead.project) || '',
-    source: lead.source || '',
-    name: lead.name || '',
-    email: lead.email || '',
-    phone: lead.phone || '',
-    city: lead.city || '',
-    size: lead.size || '',
-    budget: lead.budget || '',
-    purpose: lead.purpose || '',
-    priority: lead.priority || '',
-    workLocation: lead.workLocation || ''
+    'Lead ID': lead.leadId || `LEAD-${Date.now()}`,
+    'Project': normalizeProjectName(lead.project) || 'Not Specified',
+    'Source': lead.source || 'Facebook Lead',
+    'Name': lead.name || '',
+    'Email': lead.email || '',
+    'Phone': lead.phone || '',
+    'City': lead.city || '',
+    'Assigned To': lead.assignedTo || '',
+    'Assigned Email': lead.assignedEmail || '',
+    'Assigned Time': lead.assignedTime || new Date().toISOString(),
+    'Called?': lead.called || 'No',
+    'Call Time': lead.callTime || '',
+    'Call Delay?': lead.callDelay || 'No',
+    'Site Visit?': lead.siteVisit || 'No',
+    'Booked?': lead.booked || 'No',
+    'Lead Quality': lead.leadQuality || 'Cold',
+    'Feedback 1': lead.feedback1 || '',
+    'Time 1': lead.time1 || '',
+    'Feedback 2': lead.feedback2 || '',
+    'Time 2': lead.time2 || '',
+    'Feedback 3': lead.feedback3 || '',
+    'Time 3': lead.time3 || '',
+    'Feedback 4': lead.feedback4 || '',
+    'Time 4': lead.time4 || '',
+    'Feedback 5': lead.feedback5 || '',
+    'Time 5': lead.time5 || '',
+    'Site Visit Date': lead.siteVisitDate || '',
+    'Old Project': lead.oldProject || '',
+    'Transfer Reason': lead.transferReason || '',
+    'Transferred': lead.transferred || 'No',
+    'Transfer Time': lead.transferTime || '',
+    'Size': lead.size || '',
+    'Budget': lead.budget || '',
+    'Purpose': lead.purpose || '',
+    'Priority': lead.priority || 'Medium',
+    'Work Location': lead.workLocation || ''
   };
 }
 
@@ -205,41 +229,73 @@ router.post('/fb-webhook', async (req, res) => {
                 fields.forEach(f => {
                   if (f.name && Array.isArray(f.values)) {
                     const value = f.values[0] || '';
-                    // Store the field value
+                    const fieldName = f.name.toLowerCase().trim();
+                    
+                    // Store the raw field value
                     lead[f.name] = value;
                     
-                    // Also store with common variations for better mapping
-                    const fieldName = f.name.toLowerCase();
+                    // Map fields based on common naming patterns
+                    const fieldMappings = {
+                      // Standard contact info
+                      name: ['full name', 'first name', 'name', 'contact name', 'your name'],
+                      email: ['email', 'email address', 'e-mail', 'e-mail address'],
+                      phone: ['phone', 'mobile', 'phone number', 'mobile number', 'contact number', 'whatsapp'],
+                      city: ['city', 'location', 'current city', 'residence city', 'preferred location'],
+                      
+                      // Project details
+                      project: ['project', 'property', 'project name', 'project interested in', 'interested project'],
+                      source: ['source', 'lead source', 'how did you hear about us', 'lead origin'],
+                      
+                      // Lead details
+                      size: ['size', 'property size', 'area', 'carpet area', 'built-up area', 'super built-up area'],
+                      budget: ['budget', 'price range', 'expected budget', 'investment range', 'affordability'],
+                      purpose: ['purpose', 'requirement', 'property purpose', 'end use', 'usage'],
+                      priority: ['priority', 'urgency', 'timeline', 'timeframe', 'when to buy'],
+                      workLocation: ['work location', 'office location', 'workplace', 'office area', 'job location'],
+                      
+                      // Additional fields
+                      called: ['called', 'contacted', 'follow up done'],
+                      callTime: ['call time', 'best time to call', 'preferred call time'],
+                      siteVisit: ['site visit', 'property visit', 'schedule visit', 'interested in site visit'],
+                      siteVisitDate: ['visit date', 'preferred date', 'date of visit', 'site visit date'],
+                      leadQuality: ['lead quality', 'lead score', 'hot/warm/cold', 'lead status'],
+                      notes: ['notes', 'comments', 'additional information', 'message', 'requirements']
+                    };
                     
-                    // Map standard fields
-                    if (fieldName.includes('name') && !lead.name) {
-                      lead.name = value;
-                    }
-                    if (fieldName.includes('email') && !lead.email) {
-                      lead.email = value;
-                    }
-                    if (fieldName.includes('phone') && !lead.phone) {
-                      lead.phone = value;
-                    }
-                    if ((fieldName.includes('city') || fieldName.includes('location')) && !lead.city) {
-                      lead.city = value;
+                    // Apply field mappings
+                    Object.entries(fieldMappings).forEach(([field, patterns]) => {
+                      if (!lead[field] && patterns.some(pattern => fieldName.includes(pattern))) {
+                        lead[field] = value;
+                      }
+                    });
+                    
+                    // Special handling for priority to standardize values
+                    if (fieldName.includes('priority') || fieldName.includes('urgency')) {
+                      const priorityValue = value.toLowerCase();
+                      if (priorityValue.includes('high') || priorityValue.includes('urgent') || priorityValue.includes('immediate')) {
+                        lead.priority = 'High';
+                      } else if (priorityValue.includes('medium') || priorityValue.includes('moderate')) {
+                        lead.priority = 'Medium';
+                      } else if (priorityValue.includes('low') || priorityValue.includes('no rush') || priorityValue.includes('casual')) {
+                        lead.priority = 'Low';
+                      }
                     }
                     
-                    // Map new fields with common variations
-                    if ((fieldName.includes('size') || fieldName.includes('property size')) && !lead.size) {
-                      lead.size = value;
-                    }
-                    if ((fieldName.includes('budget') || fieldName.includes('price range')) && !lead.budget) {
-                      lead.budget = value;
-                    }
-                    if ((fieldName.includes('purpose') || fieldName.includes('requirement')) && !lead.purpose) {
-                      lead.purpose = value;
-                    }
-                    if (fieldName.includes('priority') && !lead.priority) {
-                      lead.priority = value;
-                    }
-                    if ((fieldName.includes('work location') || fieldName.includes('office location') || fieldName.includes('workplace')) && !lead.workLocation) {
-                      lead.workLocation = value;
+                    // Special handling for budget to standardize format
+                    if ((fieldName.includes('budget') || fieldName.includes('price')) && value) {
+                      // Remove any non-digit characters and convert to number
+                      const numericValue = value.replace(/[^0-9.]/g, '');
+                      if (!isNaN(numericValue)) {
+                        // Format as currency if it's a valid number
+                        lead.budget = new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: 'INR',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }).format(numericValue);
+                      } else {
+                        lead.budget = value; // Keep original if not a number
+                      }
                     }
                   }
                 });
