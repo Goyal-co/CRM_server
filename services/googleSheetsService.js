@@ -30,33 +30,193 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
   try {
     const sheets = getGoogleSheetsAPI();
 
+    // Log the incoming lead data for debugging
+    console.log('📥 Incoming lead data:', JSON.stringify(lead, null, 2));
+
     // Create a row with only the fields that exist in the lead object
     const row = [];
     
-    // Define the column mapping in order
+    // Define the column mapping in order with comprehensive field variations
     const columnMapping = [
-      { key: 'leadId', defaultValue: `LEAD-${Date.now()}` },
-      { key: 'project', defaultValue: 'Facebook Lead' },
-      { key: 'source', defaultValue: 'Facebook' },
-      { key: 'name', defaultValue: '' },
-      { key: 'email', defaultValue: '' },
-      { key: 'phone', defaultValue: '' },
-      { key: 'city', defaultValue: '' },
-      { key: 'size', defaultValue: '' },
-      { key: 'budget', defaultValue: '' },
-      { key: 'purpose', defaultValue: '' },
-      { key: 'priority', defaultValue: 'Medium' },
-      { key: 'workLocation', defaultValue: '' }
+      { 
+        key: 'leadId', 
+        aliases: ['leadid', 'id', 'lead_id', 'lead id'], 
+        defaultValue: `LEAD-${Date.now()}` 
+      },
+      { 
+        key: 'project', 
+        aliases: ['project', 'projectname', 'project_name', 'project name', 'projectname'], 
+        defaultValue: 'Facebook Lead' 
+      },
+      { 
+        key: 'source', 
+        aliases: ['source', 'leadsource', 'lead_source', 'lead source'], 
+        defaultValue: 'Facebook' 
+      },
+      { 
+        key: 'name', 
+        aliases: [
+          'name', 'fullname', 'full_name', 'full name', 'contactname', 'contact_name', 
+          'contact name', 'fullname', 'Full name', 'Full Name', 'FULL NAME', 'Full_Name',
+          'Full name', 'Full Name', 'FULL_NAME', 'Fullname', 'FULLNAME', 'Contact Name'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'email', 
+        aliases: [
+          'email', 'emailaddress', 'email_address', 'email address', 'email-address',
+          'Email', 'Email Address', 'EMAIL', 'Email_Address', 'Email-Address',
+          'emailaddress', 'EmailAddress', 'EMAIL_ADDRESS', 'email-address'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'phone', 
+        aliases: [
+          'phone', 'phonenumber', 'phone_number', 'mobile', 'contactnumber', 'contact_number',
+          'Phone', 'Phone Number', 'PHONE', 'Phone_Number', 'Phone-Number', 'phone number',
+          'Phone number', 'PHONE_NUMBER', 'phone-number', 'Mobile', 'MOBILE', 'Mobile Number',
+          'mobile number', 'Mobile_Number', 'mobile_number', 'contact', 'Contact', 'CONTACT',
+          'Contact Number', 'contact number', 'Contact_Number', 'contact_number'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'city', 
+        aliases: [
+          'city', 'location', 'cityname', 'city_name', 'city name', 'City', 'CITY',
+          'Location', 'LOCATION', 'City Name', 'cityName', 'CityName', 'CITY_NAME'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'size', 
+        aliases: [
+          'size', 'preferredsize', 'size_preference', 'size preference', 'preferred size',
+          'Size', 'SIZE', 'Size_Preference', 'size-preference', 'Preferred Size',
+          'preferred_size', 'Preferred_Size', 'PREFERRED_SIZE', 'Your preferred size?',
+          'your preferred size', 'your_preferred_size', 'your-preferred-size', 'Your_Preferred_Size',
+          'YOUR_PREFERRED_SIZE', 'YourPreferredSize', 'yourpreferredsize', 'YOURPREFERREDSIZE'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'budget', 
+        aliases: [
+          'budget', 'budgetrange', 'budget_range', 'budget range', 'Budget', 'BUDGET',
+          'Budget Range', 'budget-range', 'Budget_Range', 'BUDGET_RANGE', 'BudgetRange',
+          'budgetRange', 'BUDGETRANGE', 'Budget (Above 4.8Cr)', 'Budget (Above 4.8Cr)',
+          'budget_above_4.8cr', 'budget-above-4.8cr', 'Budget_Above_4.8Cr', 'BUDGET_ABOVE_4.8CR',
+          'Budget Dropdown', 'budget_dropdown', 'budget-dropdown', 'Budget_Dropdown',
+          'BUDGET_DROPDOWN', 'BudgetDropdown', 'budgetdropdown', 'BUDGETDROPDOWN'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'purpose', 
+        aliases: [
+          'purpose', 'requirement', 'purposeofpurchase', 'purpose of purchase', 'purpose_of_purchase',
+          'Purpose', 'PURPOSE', 'Purpose of Purchase', 'purpose-of-purchase', 'Purpose_Of_Purchase',
+          'PURPOSE_OF_PURCHASE', 'PurposeOfPurchase', 'purposeOfPurchase', 'PURPOSEOFPURCHASE',
+          'Requirement', 'REQUIREMENT', 'requirement', 'requirements', 'Requirements', 'REQUIREMENTS'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'priority', 
+        aliases: [
+          'priority', 'prioritylevel', 'leadpriority', 'priority level', 'lead priority',
+          'Priority', 'PRIORITY', 'Priority Level', 'priority-level', 'Priority_Level',
+          'PRIORITY_LEVEL', 'PriorityLevel', 'priorityLevel', 'PRIORITYLEVEL',
+          'Top Priority ( Lifestyle / Connectivity / Amenities etc)', 'Top Priority',
+          'top_priority', 'top-priority', 'Top_Priority', 'TOP_PRIORITY', 'TopPriority',
+          'topPriority', 'TOPPRIORITY', 'Lifestyle / Connectivity / Amenities',
+          'lifestyle_connectivity_amenities', 'lifestyle-connectivity-amenities',
+          'Lifestyle_Connectivity_Amenities', 'LIFESTYLE_CONNECTIVITY_AMENITIES',
+          'LifestyleConnectivityAmenities', 'lifestyleConnectivityAmenities',
+          'LIFESTYLECONNECTIVITYAMENITIES'
+        ], 
+        defaultValue: 'Medium' 
+      },
+      { 
+        key: 'workLocation', 
+        aliases: [
+          'worklocation', 'work_location', 'officelocation', 'office_location', 'work location',
+          'office location', 'Work Location', 'Work_Location', 'WORK_LOCATION', 'WorkLocation',
+          'workLocation', 'WORKLOCATION', 'Office Location', 'office_location', 'Office_Location',
+          'OFFICE_LOCATION', 'OfficeLocation', 'officeLocation', 'OFFICELOCATION',
+          'Work Address', 'work_address', 'work-address', 'Work_Address', 'WORK_ADDRESS',
+          'WorkAddress', 'workAddress', 'WORKADDRESS'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'created_time', 
+        aliases: [
+          'createddate', 'datecreated', 'timestamp', 'created_date', 'date_created', 'time_stamp',
+          'Created Date', 'created_date', 'created-date', 'Created_Date', 'CREATED_DATE',
+          'Date Created', 'date_created', 'date-created', 'Date_Created', 'DATE_CREATED',
+          'Timestamp', 'TimeStamp', 'TIME_STAMP', 'time-stamp', 'Time_Stamp', 'TIME_STAMP',
+          'createdAt', 'created_at', 'created-at', 'Created_At', 'CREATED_AT', 'CreatedAt',
+          'createdat', 'CREATEDAT'
+        ], 
+        defaultValue: new Date().toISOString() 
+      }
     ];
     
-    // Build the row with only the fields that exist in the lead object
+    // Build the row with case-insensitive field matching
     columnMapping.forEach(column => {
+      // First try exact match
       if (lead[column.key] !== undefined && lead[column.key] !== null && lead[column.key] !== '') {
         row.push(lead[column.key]);
-      } else {
-        row.push(column.defaultValue);
+      } 
+      // Then try case-insensitive match
+      else {
+        const foundKey = Object.keys(lead).find(
+          key => key.toLowerCase() === column.key.toLowerCase()
+        );
+        
+        if (foundKey) {
+          console.log(`🔄 Mapped field '${foundKey}' to '${column.key}'`);
+          row.push(lead[foundKey]);
+        }
+        // Try aliases if no direct match
+        else if (column.aliases) {
+          const aliasKey = column.aliases.find(alias => 
+            Object.keys(lead).some(key => key.toLowerCase() === alias.toLowerCase())
+          );
+          
+          if (aliasKey) {
+            const actualKey = Object.keys(lead).find(
+              key => key.toLowerCase() === aliasKey.toLowerCase()
+            );
+            console.log(`🔄 Mapped alias '${actualKey}' to '${column.key}'`);
+            row.push(lead[actualKey]);
+          } else {
+            console.log(`ℹ️ Using default for '${column.key}': ${column.defaultValue}`);
+            row.push(column.defaultValue);
+          }
+        } else {
+          console.log(`ℹ️ Using default for '${column.key}': ${column.defaultValue}`);
+          row.push(column.defaultValue);
+        }
       }
     });
+    
+    // Add any additional fields that weren't in our mapping
+    const mappedKeys = columnMapping.flatMap(col => [col.key, ...(col.aliases || [])].map(k => k.toLowerCase()));
+    const additionalFields = Object.entries(lead)
+      .filter(([key]) => !mappedKeys.includes(key.toLowerCase()))
+      .reduce((obj, [key, value]) => (obj[key] = value, obj), {});
+    
+    if (Object.keys(additionalFields).length > 0) {
+      console.log('📝 Additional fields:', additionalFields);
+      // Append additional fields to the row
+      Object.values(additionalFields).forEach(value => {
+        row.push(value);
+      });
+    }
     
     // Add the row to the values array
     const values = [row];
