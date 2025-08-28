@@ -30,78 +30,53 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
   try {
     const sheets = getGoogleSheetsAPI();
 
-    // Create a row with empty values for all columns (assuming we have at least 36 columns)
-    const rowData = new Array(36).fill('');
-
-    // Map only the specified columns from lead data (0-based indices)
-    const columnMapping = {
-      // Column A (0): Lead ID
-      0: lead.leadId || `LEAD-${Date.now()}`,
-      
-      // Column B (1): Project
-      1: lead.project || 'Not Specified',
-      
-      // Column C (2): Source
-      2: lead.source || 'Facebook Lead',
-      
-      // Column D (3): Name
-      3: lead.name || '',
-      
-      // Column E (4): Email
-      4: lead.email || '',
-      
-      // Column F (5): Phone
-      5: lead.phone || '',
-      
-      // Column G (6): City
-      6: lead.city || '',
-      
-      // Column AF (31): Size
-      31: lead.size || '',
-      
-      // Column AG (32): Budget
-      32: lead.budget || '',
-      
-      // Column AH (33): Purpose
-      33: lead.purpose || '',
-      
-      // Column AI (34): Priority
-      34: lead.priority || 'Medium',
-      
-      // Column AJ (35): Work Location
-      35: lead.workLocation || ''
-    };
-
-    // Apply the mapping to the row data
-    Object.entries(columnMapping).forEach(([index, value]) => {
-      rowData[parseInt(index)] = value;
+    // Create a row with only the fields that exist in the lead object
+    const row = [];
+    
+    // Define the column mapping in order
+    const columnMapping = [
+      { key: 'leadId', defaultValue: `LEAD-${Date.now()}` },
+      { key: 'project', defaultValue: 'Facebook Lead' },
+      { key: 'source', defaultValue: 'Facebook' },
+      { key: 'name', defaultValue: '' },
+      { key: 'email', defaultValue: '' },
+      { key: 'phone', defaultValue: '' },
+      { key: 'city', defaultValue: '' },
+      { key: 'size', defaultValue: '' },
+      { key: 'budget', defaultValue: '' },
+      { key: 'purpose', defaultValue: '' },
+      { key: 'priority', defaultValue: 'Medium' },
+      { key: 'workLocation', defaultValue: '' }
+    ];
+    
+    // Build the row with only the fields that exist in the lead object
+    columnMapping.forEach(column => {
+      if (lead[column.key] !== undefined && lead[column.key] !== null && lead[column.key] !== '') {
+        row.push(lead[column.key]);
+      } else {
+        row.push(column.defaultValue);
+      }
     });
     
-    console.log('📝 Appending lead with data:', columnMapping);
+    // Add the row to the values array
+    const values = [row];
+    
+    // Set the range to only include the columns we're updating
+    const range = `Leads!A1:${String.fromCharCode(65 + row.length - 1)}1`;
 
     const request = {
       spreadsheetId,
-      range: 'Leads!A1',
+      range: range,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       resource: {
-        values: [rowData]
+        values
       }
     };
 
     const response = await sheets.spreadsheets.values.append(request);
     console.log('✅ Lead appended to Google Sheet:', response.data.updates?.updatedRange);
-    console.log('📊 Data fields included:', Object.keys(columnMapping).map(k => {
-      const colNames = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-      const colNum = parseInt(k);
-      let colName = '';
-      if (colNum >= 26) {
-        colName = 'A' + colNames[colNum - 26];
-      } else {
-        colName = colNames[colNum];
-      }
-      return `${colName} (${colNum + 1})`;
-    }).join(', '));
+    console.log('📊 Data fields included:', Object.keys(lead).join(', '));
     return true;
   } catch (error) {
     console.error('❌ Error appending to Google Sheet:', error.message);
@@ -116,7 +91,7 @@ export async function testGoogleSheetsConnection(spreadsheetId) {
     
     const response = await sheets.spreadsheets.get({
       spreadsheetId,
-      ranges: ['Leads!A1:Z1'], // Get headers from "Leads" sheet (extended range)
+      ranges: ['Leads!A1:AJ1'], // Get headers from "Leads" sheet (extended range)
       fields: 'sheets.properties.title,sheets.data.rowData'
     });
     
@@ -137,9 +112,7 @@ export async function getSheetHeaders(spreadsheetId) {
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'Leads!1:1', // Get first row (headers)
-      majorDimension: 'ROWS',
-      range: 'Leads!A1:Z1'
+      range: 'Leads!A1:AJ1'
     });
     
     return response.data.values?.[0] || [];
