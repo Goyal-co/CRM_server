@@ -165,43 +165,84 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
       }
     ];
     
-    // Build the row with case-insensitive field matching
+    // Build the row with case-insensitive field matching and handle special characters
     columnMapping.forEach(column => {
+      let value = column.defaultValue; // Start with default value
+      let found = false;
+      
+      // Function to normalize strings for comparison
+      const normalize = (str) => {
+        if (!str) return '';
+        return str.toString()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')  // Remove all non-alphanumeric characters
+          .trim();
+      };
+
       // First try exact match
       if (lead[column.key] !== undefined && lead[column.key] !== null && lead[column.key] !== '') {
-        row.push(lead[column.key]);
+        value = lead[column.key];
+        console.log(`✅ Exact match for '${column.key}':`, value);
+        found = true;
       } 
-      // Then try case-insensitive match
-      else {
-        const foundKey = Object.keys(lead).find(
-          key => key.toLowerCase() === column.key.toLowerCase()
-        );
+      
+      // If no exact match, try case-insensitive match with normalized keys
+      if (!found) {
+        const leadKeys = Object.keys(lead);
         
-        if (foundKey) {
-          console.log(`🔄 Mapped field '${foundKey}' to '${column.key}'`);
-          row.push(lead[foundKey]);
-        }
-        // Try aliases if no direct match
-        else if (column.aliases) {
-          const aliasKey = column.aliases.find(alias => 
-            Object.keys(lead).some(key => key.toLowerCase() === alias.toLowerCase())
-          );
-          
-          if (aliasKey) {
-            const actualKey = Object.keys(lead).find(
-              key => key.toLowerCase() === aliasKey.toLowerCase()
-            );
-            console.log(`🔄 Mapped alias '${actualKey}' to '${column.key}'`);
-            row.push(lead[actualKey]);
-          } else {
-            console.log(`ℹ️ Using default for '${column.key}': ${column.defaultValue}`);
-            row.push(column.defaultValue);
+        // First try direct match with normalized keys
+        for (const leadKey of leadKeys) {
+          if (normalize(leadKey) === normalize(column.key)) {
+            value = lead[leadKey];
+            console.log(`🔄 Mapped field '${leadKey}' to '${column.key}':`, value);
+            found = true;
+            break;
           }
-        } else {
-          console.log(`ℹ️ Using default for '${column.key}': ${column.defaultValue}`);
-          row.push(column.defaultValue);
+        }
+        
+        // If still no match, try aliases
+        if (!found && column.aliases) {
+          for (const leadKey of leadKeys) {
+            const normalizedLeadKey = normalize(leadKey);
+            const matchingAlias = column.aliases.find(alias => 
+              normalize(alias) === normalizedLeadKey
+            );
+            
+            if (matchingAlias) {
+              value = lead[leadKey];
+              console.log(`🔄 Mapped alias '${leadKey}' (${matchingAlias}) to '${column.key}':`, value);
+              found = true;
+              break;
+            }
+          }
         }
       }
+      
+      // Handle field names in values (e.g., "Your preferred size?: 3 BHK" -> "3 BHK")
+      if (typeof value === 'string') {
+        // Try matching any of the possible field names in the value
+        const fieldPatterns = [
+          column.key,
+          ...(column.aliases || [])
+        ];
+        
+        for (const pattern of fieldPatterns) {
+          const regex = new RegExp(`^${pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\s:]+`, 'i');
+          if (regex.test(value)) {
+            value = value.replace(regex, '').trim();
+            console.log(`✨ Extracted value for '${column.key}':`, value);
+            break;
+          }
+        }
+      }
+      
+      // If we still don't have a value, use the default
+      if ((value === undefined || value === '') && column.defaultValue !== undefined) {
+        console.log(`ℹ️ Using default for '${column.key}':`, column.defaultValue);
+        value = column.defaultValue;
+      }
+      
+      row.push(value);
     });
     
     // Add any additional fields that weren't in our mapping
