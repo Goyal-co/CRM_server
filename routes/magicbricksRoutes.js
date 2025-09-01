@@ -53,7 +53,7 @@ router.post('/magicbricks/lead', async (req, res) => {
       email: body.responderEmail,
       phone: body.responderPhone,
       city: body.city || '', // Get city if available, otherwise leave empty
-      created_time: new Date().toISOString()
+      // created_time: new Date().toISOString()
     };
 
     // Append to Google Sheet
