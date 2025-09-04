@@ -262,7 +262,7 @@ if ((fieldName.includes('priority') || fieldName.includes('lifestyle') || fieldN
 }
 
 // Work Location field mapping
-if ((fieldName.includes('work') && fieldName.includes('location')) || normalizedFieldName.includes('worklocation') && !lead.workLocation) {
+if (((fieldName.includes('work') && fieldName.includes('location')) || normalizedFieldName.includes('worklocation')) && !lead.workLocation) {
   lead.workLocation = fieldValue;
 }
 }

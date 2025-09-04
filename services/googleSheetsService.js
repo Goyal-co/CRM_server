@@ -36,23 +36,27 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
     // Create a row with only the fields that exist in the lead object
     const row = [];
     
-    // Define the column mapping in order with comprehensive field variations
+    // Define the column mapping to match exact Google Sheets structure (38 columns)
     const columnMapping = [
+      // Column 1: Lead ID
       { 
         key: 'leadId', 
         aliases: ['leadid', 'id', 'lead_id', 'lead id'], 
         defaultValue: `LEAD-${Date.now()}` 
       },
+      // Column 2: Project
       { 
         key: 'project', 
         aliases: ['project', 'projectname', 'project_name', 'project name', 'projectname'], 
         defaultValue: 'Facebook Lead' 
       },
+      // Column 3: Source
       { 
         key: 'source', 
         aliases: ['source', 'leadsource', 'lead_source', 'lead source'], 
         defaultValue: 'Facebook' 
       },
+      // Column 4: Name
       { 
         key: 'name', 
         aliases: [
@@ -62,6 +66,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 5: Email
       { 
         key: 'email', 
         aliases: [
@@ -71,6 +76,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 6: Phone
       { 
         key: 'phone', 
         aliases: [
@@ -82,6 +88,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 7: City
       { 
         key: 'city', 
         aliases: [
@@ -90,6 +97,32 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Columns 8-31: Empty placeholders for existing sheet structure
+      { key: 'assignedTo', aliases: [], defaultValue: '' },
+      { key: 'assignedEmail', aliases: [], defaultValue: '' },
+      { key: 'assignedTime', aliases: [], defaultValue: '' },
+      { key: 'called', aliases: [], defaultValue: '' },
+      { key: 'callTime', aliases: [], defaultValue: '' },
+      { key: 'callDelay', aliases: [], defaultValue: '' },
+      { key: 'siteVisit', aliases: [], defaultValue: '' },
+      { key: 'booked', aliases: [], defaultValue: '' },
+      { key: 'leadQuality', aliases: [], defaultValue: '' },
+      { key: 'feedback1', aliases: [], defaultValue: '' },
+      { key: 'time1', aliases: [], defaultValue: '' },
+      { key: 'feedback2', aliases: [], defaultValue: '' },
+      { key: 'time2', aliases: [], defaultValue: '' },
+      { key: 'feedback3', aliases: [], defaultValue: '' },
+      { key: 'time3', aliases: [], defaultValue: '' },
+      { key: 'feedback4', aliases: [], defaultValue: '' },
+      { key: 'time4', aliases: [], defaultValue: '' },
+      { key: 'feedback5', aliases: [], defaultValue: '' },
+      { key: 'time5', aliases: [], defaultValue: '' },
+      { key: 'siteVisitDate', aliases: [], defaultValue: '' },
+      { key: 'oldProject', aliases: [], defaultValue: '' },
+      { key: 'transferReason', aliases: [], defaultValue: '' },
+      { key: 'transferred', aliases: [], defaultValue: '' },
+      { key: 'transferTime', aliases: [], defaultValue: '' },
+      // Column 32: Size
       { 
         key: 'size', 
         aliases: [
@@ -101,6 +134,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 33: Budget
       { 
         key: 'budget', 
         aliases: [
@@ -113,6 +147,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 34: Purpose
       { 
         key: 'purpose', 
         aliases: [
@@ -123,6 +158,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 35: Priority
       { 
         key: 'priority', 
         aliases: [
@@ -139,6 +175,7 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
+      // Column 36: Work Location
       { 
         key: 'workLocation', 
         aliases: [
@@ -150,19 +187,10 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
           'WorkAddress', 'workAddress', 'WORKADDRESS'
         ], 
         defaultValue: '' 
-      }
-      // { 
-      //   key: 'created_time', 
-      //   aliases: [
-      //     'createddate', 'datecreated', 'timestamp', 'created_date', 'date_created', 'time_stamp',
-      //     'Created Date', 'created_date', 'created-date', 'Created_Date', 'CREATED_DATE',
-      //     'Date Created', 'date_created', 'date-created', 'Date_Created', 'DATE_CREATED',
-      //     'Timestamp', 'TimeStamp', 'TIME_STAMP', 'time-stamp', 'Time_Stamp', 'TIME_STAMP',
-      //     'createdAt', 'created_at', 'created-at', 'Created_At', 'CREATED_AT', 'CreatedAt',
-      //     'createdat', 'CREATEDAT'
-      //   ], 
-      //   defaultValue: new Date().toISOString() 
-      // }
+      },
+      // Columns 37-38: Site Visit Done fields
+      { key: 'siteVisitDone', aliases: [], defaultValue: '' },
+      { key: 'siteVisitDoneDate', aliases: [], defaultValue: '' }
     ];
     
     // Build the row with case-insensitive field matching and handle special characters
