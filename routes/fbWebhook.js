@@ -49,6 +49,15 @@ const projectMappings = {
 return projectMappings[normalized] || normalized;
 }
 
+// Helper to normalize field names for consistent mapping
+function normalizeFieldName(fieldName) {
+  if (!fieldName) return '';
+  return fieldName.toString()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')  // Remove all non-alphanumeric characters
+    .trim();
+}
+
 // Helper to map only required columns for Google Sheet
 function mapLeadToSheetColumns(lead) {
 return {
@@ -58,7 +67,12 @@ source: lead.source || '',
 name: lead.name || '',
 email: lead.email || '',
 phone: lead.phone || '',
-city: lead.city || ''
+city: lead.city || '',
+size: lead.size || '',
+budget: lead.budget || '',
+purpose: lead.purpose || '',
+priority: lead.priority || '',
+workLocation: lead.workLocation || ''
 };
 }
 
@@ -202,19 +216,54 @@ if (f.name && Array.isArray(f.values)) {
 // Store the field value
 lead[f.name] = f.values[0] || '';
 
-// Also store with common variations for better mapping
+// Enhanced field mapping with comprehensive aliases and normalization
 const fieldName = f.name.toLowerCase();
-if (fieldName.includes('name') && !lead.name) {
-lead.name = f.values[0] || '';
+const normalizedFieldName = normalizeFieldName(f.name);
+const fieldValue = f.values[0] || '';
+
+// Name field mapping
+if ((fieldName.includes('name') || fieldName.includes('full_name') || normalizedFieldName.includes('fullname')) && !lead.name) {
+  lead.name = fieldValue;
 }
-if (fieldName.includes('email') && !lead.email) {
-lead.email = f.values[0] || '';
+
+// Email field mapping
+if ((fieldName.includes('email') || normalizedFieldName.includes('emailaddress')) && !lead.email) {
+  lead.email = fieldValue;
 }
-if (fieldName.includes('phone') && !lead.phone) {
-lead.phone = f.values[0] || '';
+
+// Phone field mapping
+if ((fieldName.includes('phone') || fieldName.includes('mobile') || normalizedFieldName.includes('phonenumber')) && !lead.phone) {
+  lead.phone = fieldValue;
 }
-if (fieldName.includes('city') || fieldName.includes('location') && !lead.city) {
-lead.city = f.values[0] || '';
+
+// City/Location field mapping
+if ((fieldName.includes('city') || fieldName.includes('location')) && !lead.city) {
+  lead.city = fieldValue;
+}
+
+// Size field mapping
+if ((fieldName.includes('size') || fieldName.includes('preferred') || normalizedFieldName.includes('yourpreferredsize')) && !lead.size) {
+  lead.size = fieldValue;
+}
+
+// Budget field mapping
+if ((fieldName.includes('budget') || fieldName.includes('dropdown') || normalizedFieldName.includes('budgetdropdown') || normalizedFieldName.includes('budgetabove48cr')) && !lead.budget) {
+  lead.budget = fieldValue;
+}
+
+// Purpose field mapping
+if (fieldName.includes('purpose') && !lead.purpose) {
+  lead.purpose = fieldValue;
+}
+
+// Priority field mapping
+if ((fieldName.includes('priority') || fieldName.includes('lifestyle') || fieldName.includes('connectivity') || fieldName.includes('amenities') || normalizedFieldName.includes('toppriority')) && !lead.priority) {
+  lead.priority = fieldValue;
+}
+
+// Work Location field mapping
+if ((fieldName.includes('work') && fieldName.includes('location')) || normalizedFieldName.includes('worklocation') && !lead.workLocation) {
+  lead.workLocation = fieldValue;
 }
 }
 });
@@ -275,10 +324,15 @@ const lead = {
 leadId: req.body.leadId || req.body.id || `LEAD-${Date.now()}`,
 project: normalizeProjectName(getProjectName(req.body.formId)),
 source: req.body.source || 'Webhook',
-name: req.body.name || req.body.full_name || '',
-email: req.body.email || req.body.email_address || '',
-phone: req.body.phone || req.body.phone_number || '',
+name: req.body.name || req.body.full_name || req.body['Full name'] || '',
+email: req.body.email || req.body.email_address || req.body['Email address'] || req.body['Email'] || '',
+phone: req.body.phone || req.body.phone_number || req.body['Phone number'] || '',
 city: req.body.city || req.body.location || '',
+size: req.body.size || req.body['Your preferred size?'] || req.body.preferred_size || '',
+budget: req.body.budget || req.body['Budget Dropdown'] || req.body['Budget (Above 4.8Cr)'] || req.body.budget_dropdown || '',
+purpose: req.body.purpose || req.body['Purpose'] || '',
+priority: req.body.priority || req.body['Top Priority ( Lifestyle / Connectivity / Amenities etc)'] || req.body.top_priority || '',
+workLocation: req.body.workLocation || req.body['Work Location'] || req.body.work_location || '',
 created_time: new Date().toISOString(),
 formId: req.body.formId || '',
 ...req.body // Include all other fields

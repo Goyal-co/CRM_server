@@ -562,6 +562,7 @@ function updatePerformanceTracker() {
   const assignedToCol = headers.indexOf("Assigned To");
   const assignedEmailCol = headers.indexOf("Assigned Email");
   const siteCol = headers.indexOf("Site Visit?");
+  const siteDoneCol = headers.indexOf("Site Visit Done?");
   const bookedCol = headers.indexOf("Booked?");
   const delayCol = headers.indexOf("Call Delay?");
 
@@ -579,6 +580,7 @@ function updatePerformanceTracker() {
       totalLeads: 0,
       delays: 0,
       siteVisits: 0,
+      siteVisitsDone: 0,
       bookings: 0,
       breakMinutes: 0,
       score: 0
@@ -593,6 +595,7 @@ function updatePerformanceTracker() {
       performance[name].totalLeads++;
       if (/^delayed$/i.test(row[delayCol] || "")) performance[name].delays++;
       if (/^yes$/i.test(row[siteCol] || "")) performance[name].siteVisits++;
+      if (siteDoneCol !== -1 && /^yes$/i.test(row[siteDoneCol] || "")) performance[name].siteVisitsDone++;
       if (/^yes$/i.test(row[bookedCol] || "")) performance[name].bookings++;
     }
   });
@@ -602,6 +605,7 @@ function updatePerformanceTracker() {
   const mRows = manualLeads.slice(1);
   const mAssigneeCol = mHeaders.indexOf("Assignee");
   const mSiteCol = mHeaders.indexOf("Site Visit?");
+  const mSiteDoneCol = mHeaders.indexOf("Site Visit Done?");
   const mBookedCol = mHeaders.indexOf("Booked?");
 
   mRows.forEach(row => {
@@ -610,6 +614,7 @@ function updatePerformanceTracker() {
     if (name && performance[name] !== undefined) {
       performance[name].totalLeads++;
       if (/^yes$/i.test(row[mSiteCol] || "")) performance[name].siteVisits++;
+      if (mSiteDoneCol !== -1 && /^yes$/i.test(row[mSiteDoneCol] || "")) performance[name].siteVisitsDone++;
       if (/^yes$/i.test(row[mBookedCol] || "")) performance[name].bookings++;
     }
   });
@@ -630,15 +635,16 @@ function updatePerformanceTracker() {
     const perf = performance[name];
     const row = i + 2; // Because header is row 1
 
-    const score = (perf.bookings * 2) + (perf.siteVisits * 1) - (perf.delays * 0.25) - (perf.breakMinutes * 0.01);
+    const score = (perf.bookings * 5) + (perf.siteVisits * 2) + (perf.siteVisitsDone * 3) - (perf.delays * 0.25) - (perf.breakMinutes * 0.01);
 
     perfSheet.getRange(row, 2).setValue(perf.totalLeads);
     perfSheet.getRange(row, 3).setValue(perf.delays);
     perfSheet.getRange(row, 4).setValue(perf.delays); // Duplicate column in your sheet
     perfSheet.getRange(row, 5).setValue(perf.siteVisits);
-    perfSheet.getRange(row, 6).setValue(perf.bookings);
-    perfSheet.getRange(row, 7).setValue(perf.breakMinutes);
-    perfSheet.getRange(row, 8).setValue(score.toFixed(2));
+    perfSheet.getRange(row, 6).setValue(perf.siteVisitsDone);
+    perfSheet.getRange(row, 7).setValue(perf.bookings);
+    perfSheet.getRange(row, 8).setValue(perf.breakMinutes);
+    perfSheet.getRange(row, 9).setValue(score.toFixed(2));
   }
 }
 
@@ -721,17 +727,18 @@ function doGet(e) {
     
     const action = e.parameter.action || "getLeads";
 
-
     const actionsThatDontNeedEmail = [
-    "addManualLead",
-    "updateLead",
-    "getTeamStatus",
+    "getTeamStats",
     "updateTeamStatus",
+    "getMonthlyChallenge",
+    "getProjectInfo",
+    "getLeadsSnapshot",
+    "getUserLeads",
     "getAdminStats",
     "updateManualLead",
     "getLeaderboard",
     "getDailyTip",
-    "getProjectInfo"  // ✅ Add this line
+    "getProjectInfo"
     ];
 
     if (!e.parameter.email && !actionsThatDontNeedEmail.includes(action)) {
@@ -799,6 +806,7 @@ function doGet(e) {
         const fieldMappings = [
           { target: 'Called?', sources: ['Called?', 'Called', 'Status'] },
           { target: 'Site Visit?', sources: ['Site Visit?', 'SiteVisit', 'Site Visit'] },
+          { target: 'Site Visit Done?', sources: ['Site Visit Done?', 'SiteVisitDone', 'Site Visit Done'] },
           { target: 'Booked?', sources: ['Booked?', 'Booked', 'Status'] },
           { target: 'Lead Quality', sources: ['Lead Quality', 'Quality', 'LeadQuality'] },
           { target: 'Lead ID', sources: ['Lead ID', 'ID', 'LeadID'] },
@@ -816,6 +824,16 @@ function doGet(e) {
             sources: [`Feedback ${i}`, `Feedback${i}`, `FB${i}`, `Comment ${i}`, `Comment${i}`]
           });
         }
+        
+        // Add date fields
+        fieldMappings.push({
+          target: 'Site Visit Date',
+          sources: ['Site Visit Date', 'SiteVisitDate', 'Visit Date']
+        });
+        fieldMappings.push({
+          target: 'Site Visit Done Date',
+          sources: ['Site Visit Done Date', 'SiteVisitDoneDate', 'Visit Done Date']
+        });
         
         // Apply field mappings
         fieldMappings.forEach(mapping => {
@@ -938,6 +956,7 @@ function doGet(e) {
       const assignedEmailCol = leadsHeaders.indexOf("Assigned Email");
       const calledCol = leadsHeaders.indexOf("Called?");
       const siteCol = leadsHeaders.indexOf("Site Visit?");
+      const siteDoneCol = leadsHeaders.indexOf("Site Visit Done?");
       const bookedCol = leadsHeaders.indexOf("Booked?");
       const delayCol = leadsHeaders.indexOf("Call Delay?");
 
@@ -945,13 +964,14 @@ function doGet(e) {
       const userLeads = leadsRows.filter(row => (row[assignedEmailCol] || "").toLowerCase() === email);
 
 
-      let totalCalls = 0, delays = 0, siteVisits = 0, bookings = 0;
+      let totalCalls = 0, delays = 0, siteVisits = 0, siteVisitsDone = 0, bookings = 0;
 
 
       userLeads.forEach(row => {
         if (row[calledCol] === "Yes") totalCalls++;
         if (row[delayCol] === "Delayed") delays++;
         if (row[siteCol] === "Yes") siteVisits++;
+        if (siteDoneCol !== -1 && row[siteDoneCol] === "Yes") siteVisitsDone++;
         if (row[bookedCol] === "Yes") bookings++;
       });
 
@@ -961,13 +981,14 @@ function doGet(e) {
       const breakMinutes = statusRow ? statusRow[3] || 0 : 0;
 
 
-      const score = siteVisits * 2 + bookings * 5 - delays * 0.25 - breakMinutes * 0.01;
+      const score = siteVisits * 2 + siteVisitsDone * 3 + bookings * 5 - delays * 0.25 - breakMinutes * 0.01;
 
 
       return ContentService.createTextOutput(JSON.stringify({
         totalCalls,
         delays,
         siteVisits,
+        siteVisitsDone,
         bookings,
         breakMinutes,
         score: Math.round(score * 10) / 10
@@ -1008,6 +1029,8 @@ function doGet(e) {
       const assignee = e.parameter.email || "";
       const siteVisit = e.parameter.siteVisit || "No";
       const siteVisitDate = e.parameter.siteVisitDate || "";
+      const siteVisitDone = e.parameter.siteVisitDone || "No";
+      const siteVisitDoneDate = e.parameter.siteVisitDoneDate || "";
       const booked = e.parameter.booked || "";
       const feedback1 = e.parameter.feedback1 || "";
       const feedback2 = e.parameter.feedback2 || "";
@@ -1065,6 +1088,12 @@ function doGet(e) {
         newRow[siteVisitCol] = siteVisit;
       }
       
+      // Handle Site Visit Done
+      const siteVisitDoneCol = getHeaderIndex(["Site Visit Done", "SiteVisitDone", "Site Visit Done?"]);
+      if (siteVisitDoneCol !== -1) {
+        newRow[siteVisitDoneCol] = siteVisitDone || "No";
+      }
+      
       // Handle Site Visit Date
       const siteVisitDateCol = getHeaderIndex(["Site Visit Date", "SiteVisitDate", "Visit Date", "SiteVisit Date"]);
       if (siteVisitDateCol !== -1 && siteVisit === "Yes" && siteVisitDate) {
@@ -1076,13 +1105,31 @@ function doGet(e) {
             const formattedDate = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
             newRow[siteVisitDateCol] = formattedDate;
           } else {
-            newRow[siteVisitDateCol] = siteVisitDate; // Fallback to raw value
+            Logger.log(`Invalid site visit date: ${siteVisitDate}`);
           }
         } catch (e) {
-          console.error("Error formatting date:", e);
-          newRow[siteVisitDateCol] = siteVisitDate; // Fallback to raw value
+          Logger.log(`Error formatting site visit date: ${e.message}`);
         }
       }
+      
+      // Handle Site Visit Done Date
+      const siteVisitDoneDateCol = getHeaderIndex(["Site Visit Done Date", "SiteVisitDoneDate", "Visit Done Date"]);
+      if (siteVisitDoneDateCol !== -1 && siteVisitDone === "Yes" && siteVisitDoneDate) {
+        try {
+          // Try to parse and format the date
+          const date = new Date(siteVisitDoneDate);
+          if (!isNaN(date.getTime())) {
+            // Format as YYYY-MM-DD for consistency
+            const formattedDate = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
+            newRow[siteVisitDoneDateCol] = formattedDate;
+          } else {
+            Logger.log(`Invalid site visit done date: ${siteVisitDoneDate}`);
+          }
+        } catch (e) {
+          Logger.log(`Error formatting site visit done date: ${e.message}`);
+        }
+      }
+      
       if (headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"]) {
         const bookedCol = headerMap["Booked"] || headerMap["Booked?"] || headerMap["Status"];
         newRow[bookedCol - 1] = booked;
@@ -1254,6 +1301,19 @@ function doGet(e) {
           return;
         }
         
+        // Special handling for site visit done date
+        if (normalizedField.includes('sitevisitdonedate') || normalizedField.includes('sitevisitdone')) {
+          const possibleHeaders = ['Site Visit Done Date', 'SiteVisitDoneDate', 'Site Visit Done', 'SiteVisitDone'];
+          for (const header of possibleHeaders) {
+            const normalizedHeader = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (headerMap[normalizedHeader] !== undefined) {
+              sheet.getRange(rowIndex, headerMap[normalizedHeader] + 1).setValue(value);
+              break;
+            }
+          }
+          return;
+        }
+        
         // Handle other fields
         if (headerMap[normalizedField] !== undefined) {
           sheet.getRange(rowIndex, headerMap[normalizedField] + 1).setValue(value);
@@ -1339,6 +1399,7 @@ function doGet(e) {
         const fieldMappings = [
           { param: 'called', possibleHeaders: ['Called?', 'Called', 'Status'] },
           { param: 'siteVisit', possibleHeaders: ['Site Visit?', 'SiteVisit', 'Site Visit', 'SiteVisit'] },
+          { param: 'siteVisitDone', possibleHeaders: ['Site Visit Done?', 'SiteVisitDone', 'Site Visit Done'] },
           { param: 'booked', possibleHeaders: ['Booked?', 'Booked', 'Status'] },
           { param: 'quality', possibleHeaders: ['Lead Quality', 'Quality', 'LeadQuality'] },
           { param: 'leadQuality', possibleHeaders: ['Lead Quality', 'Quality', 'LeadQuality'] },
@@ -1508,12 +1569,13 @@ if (action === "getAdminStats") {
     if (email && name) emailToName[email] = name;
 
     const key = email || name;
-    if (!teamMap[key]) teamMap[key] = { name: name || email, email, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
+    if (!teamMap[key]) teamMap[key] = { name: name || email, email, leads: 0, called: 0, siteVisits: 0, siteVisitsDone: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
 
     teamMap[key].leads++;
     teamMap[key].autoLeads++;
     if (isYes(row[idx("Called?")])) teamMap[key].called++;
     if (isYes(row[idx("Site Visit?")])) teamMap[key].siteVisits++;
+    if (isYes(row[idx("Site Visit Done?")])) teamMap[key].siteVisitsDone++;
     if (isYes(row[idx("Booked?")])) teamMap[key].bookings++;
     if (isYes(row[idx("Call Delay?")])) teamMap[key].callDelay++;
 
@@ -1532,11 +1594,12 @@ if (action === "getAdminStats") {
     const name = emailToName[email] || (row[manualIdx("Assignee")] || "").toString().trim();
     const key = email || name;
 
-    if (!teamMap[key]) teamMap[key] = { name, email, leads: 0, called: 0, siteVisits: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
+    if (!teamMap[key]) teamMap[key] = { name, email, leads: 0, called: 0, siteVisits: 0, siteVisitsDone: 0, bookings: 0, callDelay: 0, autoLeads: 0, manualLeads: 0 };
 
     teamMap[key].leads++;
     teamMap[key].manualLeads++;
     if (isYes(row[manualIdx("Site Visit?")])) teamMap[key].siteVisits++;
+    if (isYes(row[manualIdx("Site Visit Done?")])) teamMap[key].siteVisitsDone++;
     if (isYes(row[manualIdx("Booked?")])) teamMap[key].bookings++;
 
     const normalizedQuality = normalizeQuality(row[manualIdx("Lead Quality")]);
@@ -1571,7 +1634,7 @@ if (action === "getAdminStats") {
       totalRNR: (q.autoRNR || 0) + (q.manualRNR || 0),
       totalInvalid: (q.autoInvalid || 0) + (q.manualInvalid || 0),
       totalJunk: (q.autoJunk || 0) + (q.manualJunk || 0),
-      score: (stat.bookings * 5) + (stat.siteVisits * 2) 
+      score: (stat.bookings * 5) + (stat.siteVisits * 2) + (stat.siteVisitsDone * 3) 
     };
   });
 
@@ -1587,6 +1650,10 @@ if (action === "getAdminStats") {
     filteredAuto.filter(r => isYes(r[idx("Site Visit?")])).length +
     filteredManual.filter(r => isYes(r[manualIdx("Site Visit?")])).length;
 
+  const totalSiteVisitsDone =
+    filteredAuto.filter(r => isYes(r[idx("Site Visit Done?")])).length +
+    filteredManual.filter(r => isYes(r[manualIdx("Site Visit Done?")])).length;
+
   const junkCount = qualityMap["Junk"] || 0;
   const effectiveLeads = totalLeadsCount - junkCount;
   const conversionPercent = effectiveLeads > 0
@@ -1599,6 +1666,7 @@ if (action === "getAdminStats") {
     manualLeadsCount,
     totalLeadsCount,
     siteVisitsCount: totalSiteVisits,
+    siteVisitsDoneCount: totalSiteVisitsDone,
     bookingsCount: totalBookings,
     conversionPercent,
     qualityDistribution: Object.keys(qualityMap).map(type => ({ name: type, value: qualityMap[type] }))
@@ -1657,25 +1725,27 @@ if (action === "getLeaderboard") {
     const name = row[idx("Assigned To")] || "Unknown";
     const called = row[idx("Called?")] === "Yes" ? 1 : 0;
     const visit = row[idx("Site Visit?")] === "Yes" ? 1 : 0;
+    const visitDone = row[idx("Site Visit Done?")] === "Yes" ? 1 : 0;
     const booked = row[idx("Booked?")] === "Yes" ? 1 : 0;
 
 
     if (!map[name]) {
-      map[name] = { name, leads: 0, called: 0, siteVisits: 0, bookings: 0, score: 0 };
+      map[name] = { name, leads: 0, called: 0, siteVisits: 0, siteVisitsDone: 0, bookings: 0, score: 0 };
     }
 
 
     map[name].leads++;
     map[name].called += called;
     map[name].siteVisits += visit;
+    map[name].siteVisitsDone += visitDone;
     map[name].bookings += booked;
   });
 
 
-  // score: +1 for visit, +2 for booking
+  // score: +2 for site visit, +3 for site visit done, +5 for booking
   for (let key in map) {
     const m = map[key];
-    m.score = m.siteVisits * 2 + m.bookings * 5;
+    m.score = m.siteVisits * 2 + m.siteVisitsDone * 3 + m.bookings * 5;
   }
 
 
@@ -1779,65 +1849,549 @@ if (action === "getTasks") {
 
 
 if (action === "getMonthlyChallenge") {
-  const sheet = ss.getSheetByName("Monthly Challenge");
-  const data = sheet.getDataRange().getValues();
-  const today = new Date();
-  const monthName = today.toLocaleString("default", { month: "long" }) + " " + today.getFullYear(); // e.g., May 2025
-
-
-  Logger.log("Looking for challenge for: " + monthName);
-
-
-  const headers = data[0];
-  const rows = data.slice(1);
-
-
-  const row = rows.find(r => r[0] === monthName);
-
-
-  if (!row) {
-    return ContentService.createTextOutput(JSON.stringify({ error: "No challenge set" })).setMimeType(ContentService.MimeType.JSON);
+  const email = e.parameter.email;
+  if (!email) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "Email parameter required" }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 
+  const sheet = ss.getSheetByName("Leads");
+  const manualSheet = ss.getSheetByName("Manual Leads");
+  const data = sheet.getDataRange().getValues();
+  const manualData = manualSheet.getDataRange().getValues();
+  const headers = data[0];
+  const manualHeaders = manualData[0];
+  const rows = data.slice(1);
+  const manualRows = manualData.slice(1);
 
-  const siteVisitTarget = row[1];
-  const bookingTarget = row[2];
-  const prize = row[3] || "";
+  const idx = (col) => headers.indexOf(col);
+  const manualIdx = (col) => manualHeaders.indexOf(col);
 
+  // Filter rows for the current month and user
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const userRows = rows.filter(row => {
+    const assignedEmail = (row[idx("Assigned Email")] || "").toLowerCase();
+    const createdAt = row[idx("Created At")] || row[idx("Timestamp")];
+    if (!createdAt) return false;
+    
+    const date = new Date(createdAt);
+    return assignedEmail === email.toLowerCase() && 
+           date.getMonth() === currentMonth && 
+           date.getFullYear() === currentYear;
+  });
 
-  const leadsSheet = ss.getSheetByName("Leads");
-  const leads = leadsSheet.getDataRange().getValues();
-  const h = leads[0];
-  const r = leads.slice(1);
-
-
-  const email = e.parameter.email?.toLowerCase();
-  const idx = (col) => h.indexOf(col);
-  const userRows = r.filter(row => (row[idx("Assigned Email")] || "").toLowerCase() === email);
+  const userManualRows = manualRows.filter(row => {
+    const assignee = (row[manualIdx("Assignee")] || "").toLowerCase();
+    const createdAt = row[manualIdx("Created At")] || row[manualIdx("Timestamp")];
+    if (!createdAt) return false;
+    
+    const date = new Date(createdAt);
+    return assignee === email.toLowerCase() && 
+           date.getMonth() === currentMonth && 
+           date.getFullYear() === currentYear;
+  });
 
 
   const visitDone = userRows.filter(row => row[idx("Site Visit?")] === "Yes").length;
+  const visitCompletedDone = userRows.filter(row => row[idx("Site Visit Done?")] === "Yes").length;
   const bookedDone = userRows.filter(row => row[idx("Booked?")] === "Yes").length;
 
 
+  // Challenge targets (you can make these configurable)
+  const siteVisitTarget = 15;
+  const bookingTarget = 3;
+  const prize = "₹5000 Cash Prize";
+
   const completed = visitDone >= siteVisitTarget && bookedDone >= bookingTarget;
 
-
   return ContentService.createTextOutput(JSON.stringify({
-    month: monthName,
     siteVisitTarget,
     bookingTarget,
     prize,
     siteVisitDone: visitDone,
+    siteVisitCompletedDone: visitCompletedDone,
     bookingDone: bookedDone,
     completed
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
 
+if (action === "getLeadsSnapshot") {
+  // Email to name mapping (declare at the top)
+  const emailToName = {
+    "sahil@goyalhariyana.com": "Sahil",
+    "pratham@goyalhariyana.com": "Pratham", 
+    "srinivas@goyalhariyana.com": "Srinivas"
+  };
+
+  // Helper function to check if value is "Yes"
+  const isYes = (val) => /^yes$/i.test(val || "");
+
+  // Helper function to normalize quality values
+  const normalizeQuality = (quality) => {
+    if (!quality) return "Unknown";
+    const q = quality.toString().toLowerCase().trim();
+    if (q.includes("wip") || q.includes("work in progress")) return "WIP";
+    if (q.includes("warm")) return "Warm";
+    if (q.includes("cold")) return "Cold";
+    if (q.includes("rnr") || q.includes("ring no response")) return "RNR";
+    if (q.includes("junk")) return "Junk";
+    if (q.includes("invalid")) return "Invalid";
+    return "Unknown";
+  };
+
+  const sheet = ss.getSheetByName("Leads");
+  const manualSheet = ss.getSheetByName("Manual Leads");
+  const autoData = sheet.getDataRange().getValues();
+  const manualData = manualSheet.getDataRange().getValues();
+  
+  const autoHeaders = autoData[0];
+  const manualHeaders = manualData[0];
+  let autoRows = autoData.slice(1);
+  let manualRows = manualData.slice(1);
+
+  const autoIdx = (col) => autoHeaders.indexOf(col);
+  const manualIdx = (col) => manualHeaders.indexOf(col);
+
+  // Date filtering
+  const dateFilter = e.parameter.dateFilter;
+  const startDate = e.parameter.startDate;
+  const endDate = e.parameter.endDate;
+  const userFilter = e.parameter.userFilter;
+
+  if (dateFilter && dateFilter !== "all") {
+    const now = new Date();
+    let filterStartDate, filterEndDate;
+
+    switch (dateFilter) {
+      case "today":
+        filterStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        filterEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        break;
+      case "yesterday":
+        filterStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        filterEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case "thisWeek":
+        const startOfWeek = now.getDate() - now.getDay();
+        filterStartDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek);
+        filterEndDate = new Date(now.getFullYear(), now.getMonth(), startOfWeek + 7);
+        break;
+      case "lastWeek":
+        const lastWeekStart = now.getDate() - now.getDay() - 7;
+        filterStartDate = new Date(now.getFullYear(), now.getMonth(), lastWeekStart);
+        filterEndDate = new Date(now.getFullYear(), now.getMonth(), lastWeekStart + 7);
+        break;
+      case "thisMonth":
+        filterStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        filterEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        break;
+      case "lastMonth":
+        filterStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        filterEndDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case "thisQuarter":
+        const quarterStart = Math.floor(now.getMonth() / 3) * 3;
+        filterStartDate = new Date(now.getFullYear(), quarterStart, 1);
+        filterEndDate = new Date(now.getFullYear(), quarterStart + 3, 1);
+        break;
+      case "lastQuarter":
+        const lastQuarterStart = Math.floor(now.getMonth() / 3) * 3 - 3;
+        filterStartDate = new Date(now.getFullYear(), lastQuarterStart, 1);
+        filterEndDate = new Date(now.getFullYear(), lastQuarterStart + 3, 1);
+        break;
+      case "thisYear":
+        filterStartDate = new Date(now.getFullYear(), 0, 1);
+        filterEndDate = new Date(now.getFullYear() + 1, 0, 1);
+        break;
+      case "lastYear":
+        filterStartDate = new Date(now.getFullYear() - 1, 0, 1);
+        filterEndDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      case "custom":
+        if (startDate && endDate) {
+          filterStartDate = new Date(startDate);
+          filterEndDate = new Date(endDate);
+          filterEndDate.setDate(filterEndDate.getDate() + 1); // Include end date
+        }
+        break;
+    }
+
+    if (filterStartDate && filterEndDate) {
+      console.log("Date filtering - Start:", filterStartDate, "End:", filterEndDate);
+      
+      // Filter auto leads by date (use "Assigned Time" column)
+      const originalAutoCount = autoRows.length;
+      autoRows = autoRows.filter(row => {
+        const dateStr = row[autoIdx("Assigned Time")] || row[autoIdx("Assigned")] || row[autoIdx("Date")] || row[autoIdx("Timestamp")];
+        if (!dateStr) {
+          console.log("No date found for auto lead:", row[autoIdx("Lead ID")]);
+          return false;
+        }
+        const rowDate = new Date(dateStr);
+        const isInRange = rowDate >= filterStartDate && rowDate < filterEndDate;
+        if (!isInRange) {
+          console.log("Auto lead filtered out - Date:", dateStr, "Parsed:", rowDate, "In range:", isInRange);
+        }
+        return isInRange;
+      });
+      console.log("Auto leads filtered from", originalAutoCount, "to", autoRows.length);
+
+      // Filter manual leads by date
+      const originalManualCount = manualRows.length;
+      manualRows = manualRows.filter(row => {
+        const dateStr = row[manualIdx("Created At")] || row[manualIdx("Date")] || row[manualIdx("Timestamp")];
+        if (!dateStr) {
+          console.log("No date found for manual lead:", row[manualIdx("Lead ID")]);
+          return false;
+        }
+        const rowDate = new Date(dateStr);
+        const isInRange = rowDate >= filterStartDate && rowDate < filterEndDate;
+        if (!isInRange) {
+          console.log("Manual lead filtered out - Date:", dateStr, "Parsed:", rowDate, "In range:", isInRange);
+        }
+        return isInRange;
+      });
+      console.log("Manual leads filtered from", originalManualCount, "to", manualRows.length);
+    }
+  }
+
+  // Apply user filtering if specified
+  if (userFilter && userFilter !== "") {
+    autoRows = autoRows.filter(row => {
+      const assignedTo = row[autoIdx("Assigned To")] || "";
+      return assignedTo === userFilter;
+    });
+    
+    manualRows = manualRows.filter(row => {
+      const email = (row[manualIdx("Assignee")] || "").toString().trim().toLowerCase();
+      const assigneeName = emailToName[email] || row[manualIdx("Assignee")] || "";
+      return assigneeName === userFilter;
+    });
+  }
+
+  // User statistics
+  const userStatsMap = {};
+  
+  // Process auto leads
+  autoRows.forEach(row => {
+    const user = row[autoIdx("Assigned To")] || "Unknown";
+    if (!userStatsMap[user]) {
+      userStatsMap[user] = {
+        user,
+        totalLeads: 0,
+        called: 0,
+        siteVisits: 0,
+        siteVisitsDone: 0,
+        bookings: 0
+      };
+    }
+    
+    userStatsMap[user].totalLeads++;
+    if (isYes(row[autoIdx("Called?")])) userStatsMap[user].called++;
+    if (isYes(row[autoIdx("Site Visit?")])) userStatsMap[user].siteVisits++;
+    if (isYes(row[autoIdx("Site Visit Done?")])) userStatsMap[user].siteVisitsDone++;
+    if (isYes(row[autoIdx("Booked?")])) userStatsMap[user].bookings++;
+  });
+
+  // Process manual leads with email-to-name mapping
+  manualRows.forEach(row => {
+    const email = (row[manualIdx("Assignee")] || "").toString().trim().toLowerCase();
+    const user = emailToName[email] || row[manualIdx("Assignee")] || "Unknown";
+    
+    if (!userStatsMap[user]) {
+      userStatsMap[user] = {
+        user,
+        totalLeads: 0,
+        called: 0,
+        siteVisits: 0,
+        siteVisitsDone: 0,
+        bookings: 0
+      };
+    }
+    
+    userStatsMap[user].totalLeads++;
+    if (isYes(row[manualIdx("Called?")])) userStatsMap[user].called++;
+    if (isYes(row[manualIdx("Site Visit?")])) userStatsMap[user].siteVisits++;
+    if (isYes(row[manualIdx("Site Visit Done?")])) userStatsMap[user].siteVisitsDone++;
+    if (isYes(row[manualIdx("Booked?")])) userStatsMap[user].bookings++;
+  });
+
+
+
+  console.log("Starting getLeadsSnapshot processing...");
+  console.log("Auto headers:", autoHeaders);
+  console.log("Manual headers:", manualHeaders);
+  console.log("Auto rows after filtering:", autoRows.length);
+  console.log("Manual rows after filtering:", manualRows.length);
+  console.log("Date filter:", dateFilter);
+  console.log("User filter:", userFilter);
+  
+  // Check if we have data
+  if (autoRows.length === 0 && manualRows.length === 0) {
+    return ContentService.createTextOutput(JSON.stringify({
+      userStats: [],
+      sourceStats: [],
+      allLeadsData: [],
+      error: "No data found after filtering"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Source statistics (calculated from filtered data)
+  const sourceStatsMap = {};
+  
+  // Process auto leads for source stats
+  console.log("Processing auto leads for source stats. Count:", autoRows.length);
+  autoRows.forEach((row, index) => {
+    const source = row[autoIdx("Source")] || "Unknown";
+    const quality = normalizeQuality(row[autoIdx("Lead Quality")]);
+    
+    if (index < 3) {
+      console.log(`Auto lead ${index}: Source=${source}, Quality=${quality}`);
+    }
+    
+    if (!sourceStatsMap[source]) {
+      sourceStatsMap[source] = {
+        source,
+        totalLeads: 0,
+        called: 0,
+        siteVisits: 0,
+        siteVisitsDone: 0,
+        bookings: 0,
+        qualityBreakdown: {
+          WIP: 0,
+          Warm: 0,
+          Cold: 0,
+          RNR: 0,
+          Junk: 0,
+          Invalid: 0,
+          Unknown: 0
+        }
+      };
+      console.log(`Created new source stats for: ${source}`);
+    }
+    
+    sourceStatsMap[source].totalLeads++;
+    if (isYes(row[autoIdx("Called?")])) sourceStatsMap[source].called++;
+    if (isYes(row[autoIdx("Site Visit?")])) sourceStatsMap[source].siteVisits++;
+    if (isYes(row[autoIdx("Site Visit Done?")])) sourceStatsMap[source].siteVisitsDone++;
+    if (isYes(row[autoIdx("Booked?")])) sourceStatsMap[source].bookings++;
+    
+    // Count quality breakdown
+    if (sourceStatsMap[source].qualityBreakdown[quality] !== undefined) {
+      sourceStatsMap[source].qualityBreakdown[quality]++;
+    } else {
+      sourceStatsMap[source].qualityBreakdown.Unknown++;
+    }
+  });
+
+  // Process manual leads for source stats
+  console.log("Processing manual leads for source stats. Count:", manualRows.length);
+  manualRows.forEach((row, index) => {
+    const source = "Manual Entry"; // Manual leads are typically from manual entry
+    const quality = normalizeQuality(row[manualIdx("Lead Quality")]);
+    
+    if (index < 3) {
+      console.log(`Manual lead ${index}: Source=${source}, Quality=${quality}`);
+    }
+    
+    if (!sourceStatsMap[source]) {
+      sourceStatsMap[source] = {
+        source,
+        totalLeads: 0,
+        called: 0,
+        siteVisits: 0,
+        siteVisitsDone: 0,
+        bookings: 0,
+        qualityBreakdown: {
+          WIP: 0,
+          Warm: 0,
+          Cold: 0,
+          RNR: 0,
+          Junk: 0,
+          Invalid: 0,
+          Unknown: 0
+        }
+      };
+      console.log(`Created new source stats for: ${source}`);
+    }
+    
+    sourceStatsMap[source].totalLeads++;
+    if (isYes(row[manualIdx("Called?")])) sourceStatsMap[source].called++;
+    if (isYes(row[manualIdx("Site Visit?")])) sourceStatsMap[source].siteVisits++;
+    if (isYes(row[manualIdx("Site Visit Done?")])) sourceStatsMap[source].siteVisitsDone++;
+    if (isYes(row[manualIdx("Booked?")])) sourceStatsMap[source].bookings++;
+    
+    // Count quality breakdown
+    if (sourceStatsMap[source].qualityBreakdown[quality] !== undefined) {
+      sourceStatsMap[source].qualityBreakdown[quality]++;
+    } else {
+      sourceStatsMap[source].qualityBreakdown.Unknown++;
+    }
+  });
+
+  // Prepare detailed leads data for export
+  const allLeadsData = [];
+  
+  // Add auto leads
+  autoRows.forEach(row => {
+    const leadData = {};
+    autoHeaders.forEach((header, index) => {
+      leadData[header] = row[index] || "";
+    });
+    leadData["Lead Type"] = "Auto";
+    allLeadsData.push(leadData);
+  });
+
+  // Add manual leads
+  manualRows.forEach(row => {
+    const leadData = {};
+    manualHeaders.forEach((header, index) => {
+      leadData[header] = row[index] || "";
+    });
+    leadData["Lead Type"] = "Manual";
+    allLeadsData.push(leadData);
+  });
+
+  // Debug logging
+  console.log("User Stats Map:", userStatsMap);
+  console.log("Source Stats Map:", sourceStatsMap);
+  console.log("Auto Rows Count:", autoRows.length);
+  console.log("Manual Rows Count:", manualRows.length);
+
+  console.log("Final sourceStatsMap:", sourceStatsMap);
+  console.log("Final sourceStats array:", Object.values(sourceStatsMap));
+  console.log("Source stats count:", Object.keys(sourceStatsMap).length);
+
+  const result = {
+    userStats: Object.values(userStatsMap),
+    sourceStats: Object.values(sourceStatsMap),
+    allLeadsData,
+    debug: {
+      totalAutoRows: autoRows.length,
+      totalManualRows: manualRows.length,
+      userStatsCount: Object.keys(userStatsMap).length,
+      sourceStatsCount: Object.keys(sourceStatsMap).length,
+      dateFilter: dateFilter || "none",
+      sourceStatsKeys: Object.keys(sourceStatsMap)
+    }
+  };
+  
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+if (action === "getUserLeads") {
+  const userName = e.parameter.user;
+  if (!userName) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "User parameter required" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Email to name mapping
+  const emailToName = {
+    "sahil@goyalhariyana.com": "Sahil",
+    "pratham@goyalhariyana.com": "Pratham", 
+    "srinivas@goyalhariyana.com": "Srinivas"
+  };
+
+  const sheet = ss.getSheetByName("Leads");
+  const manualSheet = ss.getSheetByName("Manual Leads");
+  const autoData = sheet.getDataRange().getValues();
+  const manualData = manualSheet.getDataRange().getValues();
+  
+  const autoHeaders = autoData[0];
+  const manualHeaders = manualData[0];
+  const autoRows = autoData.slice(1);
+  const manualRows = manualData.slice(1);
+
+  const autoIdx = (col) => autoHeaders.indexOf(col);
+  const manualIdx = (col) => manualHeaders.indexOf(col);
+
+  const userLeads = [];
+
+  // Process auto leads for the specific user
+  autoRows.forEach(row => {
+    const assignedTo = row[autoIdx("Assigned To")] || "";
+    if (assignedTo === userName) {
+      const leadData = {
+        "Lead Type": "Auto",
+        "Lead ID": row[autoIdx("Lead ID")] || "",
+        "Name": row[autoIdx("Name")] || "",
+        "Phone": row[autoIdx("Phone")] || "",
+        "Email": row[autoIdx("Email")] || "",
+        "Project": row[autoIdx("Project")] || "",
+        "Source": row[autoIdx("Source")] || "",
+        "Assigned To": row[autoIdx("Assigned To")] || "",
+        "Date": row[autoIdx("Date")] || row[autoIdx("Timestamp")] || "",
+        "Called?": row[autoIdx("Called?")] || "",
+        "Site Visit?": row[autoIdx("Site Visit?")] || "",
+        "Site Visit Done?": row[autoIdx("Site Visit Done?")] || "",
+        "Booked?": row[autoIdx("Booked?")] || "",
+        "Lead Quality": row[autoIdx("Lead Quality")] || "",
+        "Notes": row[autoIdx("Notes")] || ""
+      };
+      userLeads.push(leadData);
+    }
+  });
+
+  // Process manual leads for the specific user (with email-to-name mapping)
+  manualRows.forEach(row => {
+    const email = (row[manualIdx("Assignee")] || "").toString().trim().toLowerCase();
+    const assigneeName = emailToName[email] || row[manualIdx("Assignee")] || "";
+    
+    if (assigneeName === userName) {
+      const leadData = {
+        "Lead Type": "Manual",
+        "Lead ID": row[manualIdx("Lead ID")] || "",
+        "Name": row[manualIdx("Name")] || "",
+        "Phone": row[manualIdx("Phone")] || "",
+        "Email": row[manualIdx("Email")] || "",
+        "Project": row[manualIdx("Project")] || "",
+        "Source": "Manual Entry",
+        "Assigned To": assigneeName,
+        "Assigned Email": row[manualIdx("Assignee")] || "",
+        "Created At": row[manualIdx("Created At")] || row[manualIdx("Timestamp")] || "",
+        "Called?": row[manualIdx("Called?")] || "",
+        "Site Visit?": row[manualIdx("Site Visit?")] || "",
+        "Site Visit Date": row[manualIdx("Site Visit Date")] || "",
+        "Site Visit Done?": row[manualIdx("Site Visit Done?")] || "",
+        "Site Visit Done Date": row[manualIdx("Site Visit Done Date")] || "",
+        "Booked?": row[manualIdx("Booked?")] || "",
+        "Lead Quality": row[manualIdx("Lead Quality")] || "",
+        "Call Delay?": row[manualIdx("Call Delay?")] || "",
+        "Feedback 1": row[manualIdx("Feedback 1")] || "",
+        "Feedback 2": row[manualIdx("Feedback 2")] || "",
+        "Feedback 3": row[manualIdx("Feedback 3")] || "",
+        "Feedback 4": row[manualIdx("Feedback 4")] || "",
+        "Feedback 5": row[manualIdx("Feedback 5")] || "",
+        "Notes": row[manualIdx("Notes")] || "",
+        "Status": row[manualIdx("Status")] || ""
+      };
+      
+      // Add any additional columns that might exist
+      manualHeaders.forEach((header, index) => {
+        if (!leadData[header] && header) {
+          leadData[header] = row[index] || "";
+        }
+      });
+      
+      userLeads.push(leadData);
+    }
+  });
+
+  return ContentService.createTextOutput(JSON.stringify({
+    user: userName,
+    totalLeads: userLeads.length,
+    leads: userLeads
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+
 if (action === "getProjectInfo") {
   const brochureSheetId = "1s3j0Ngdrsk4r753jPl3DY5XCLFBeK7Zx1ck87WR-mec";
-  const projectName = (e.parameter.project || "").trim().toLowerCase(); // 👈 lowercase here
+  const projectName = (e.parameter.project || "").trim().toLowerCase(); // lowercase here
 
 
   const ss = SpreadsheetApp.openById(brochureSheetId);

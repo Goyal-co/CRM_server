@@ -90,67 +90,67 @@ export async function appendLeadToSheet(lead, spreadsheetId) {
         ], 
         defaultValue: '' 
       },
-      // { 
-      //   key: 'size', 
-      //   aliases: [
-      //     'size', 'preferredsize', 'size_preference', 'size preference', 'preferred size',
-      //     'Size', 'SIZE', 'Size_Preference', 'size-preference', 'Preferred Size',
-      //     'preferred_size', 'Preferred_Size', 'PREFERRED_SIZE', 'Your preferred size?',
-      //     'your preferred size', 'your_preferred_size', 'your-preferred-size', 'Your_Preferred_Size',
-      //     'YOUR_PREFERRED_SIZE', 'YourPreferredSize', 'yourpreferredsize', 'YOURPREFERREDSIZE'
-      //   ], 
-      //   defaultValue: '' 
-      // },
-      // { 
-      //   key: 'budget', 
-      //   aliases: [
-      //     'budget', 'budgetrange', 'budget_range', 'budget range', 'Budget', 'BUDGET',
-      //     'Budget Range', 'budget-range', 'Budget_Range', 'BUDGET_RANGE', 'BudgetRange',
-      //     'budgetRange', 'BUDGETRANGE', 'Budget (Above 4.8Cr)', 'Budget (Above 4.8Cr)',
-      //     'budget_above_4.8cr', 'budget-above-4.8cr', 'Budget_Above_4.8Cr', 'BUDGET_ABOVE_4.8CR',
-      //     'Budget Dropdown', 'budget_dropdown', 'budget-dropdown', 'Budget_Dropdown',
-      //     'BUDGET_DROPDOWN', 'BudgetDropdown', 'budgetdropdown', 'BUDGETDROPDOWN'
-      //   ], 
-      //   defaultValue: '' 
-      // },
-      // { 
-      //   key: 'purpose', 
-      //   aliases: [
-      //     'purpose', 'requirement', 'purposeofpurchase', 'purpose of purchase', 'purpose_of_purchase',
-      //     'Purpose', 'PURPOSE', 'Purpose of Purchase', 'purpose-of-purchase', 'Purpose_Of_Purchase',
-      //     'PURPOSE_OF_PURCHASE', 'PurposeOfPurchase', 'purposeOfPurchase', 'PURPOSEOFPURCHASE',
-      //     'Requirement', 'REQUIREMENT', 'requirement', 'requirements', 'Requirements', 'REQUIREMENTS'
-      //   ], 
-      //   defaultValue: '' 
-      // },
-      // { 
-      //   key: 'priority', 
-      //   aliases: [
-      //     'priority', 'prioritylevel', 'leadpriority', 'priority level', 'lead priority',
-      //     'Priority', 'PRIORITY', 'Priority Level', 'priority-level', 'Priority_Level',
-      //     'PRIORITY_LEVEL', 'PriorityLevel', 'priorityLevel', 'PRIORITYLEVEL',
-      //     'Top Priority ( Lifestyle / Connectivity / Amenities etc)', 'Top Priority',
-      //     'top_priority', 'top-priority', 'Top_Priority', 'TOP_PRIORITY', 'TopPriority',
-      //     'topPriority', 'TOPPRIORITY', 'Lifestyle / Connectivity / Amenities',
-      //     'lifestyle_connectivity_amenities', 'lifestyle-connectivity-amenities',
-      //     'Lifestyle_Connectivity_Amenities', 'LIFESTYLE_CONNECTIVITY_AMENITIES',
-      //     'LifestyleConnectivityAmenities', 'lifestyleConnectivityAmenities',
-      //     'LIFESTYLECONNECTIVITYAMENITIES'
-      //   ], 
-      //   defaultValue: 'Medium' 
-      // },
-      // { 
-      //   key: 'workLocation', 
-      //   aliases: [
-      //     'worklocation', 'work_location', 'officelocation', 'office_location', 'work location',
-      //     'office location', 'Work Location', 'Work_Location', 'WORK_LOCATION', 'WorkLocation',
-      //     'workLocation', 'WORKLOCATION', 'Office Location', 'office_location', 'Office_Location',
-      //     'OFFICE_LOCATION', 'OfficeLocation', 'officeLocation', 'OFFICELOCATION',
-      //     'Work Address', 'work_address', 'work-address', 'Work_Address', 'WORK_ADDRESS',
-      //     'WorkAddress', 'workAddress', 'WORKADDRESS'
-      //   ], 
-      //   defaultValue: '' 
-      // },
+      { 
+        key: 'size', 
+        aliases: [
+          'size', 'preferredsize', 'size_preference', 'size preference', 'preferred size',
+          'Size', 'SIZE', 'Size_Preference', 'size-preference', 'Preferred Size',
+          'preferred_size', 'Preferred_Size', 'PREFERRED_SIZE', 'Your preferred size?',
+          'your preferred size', 'your_preferred_size', 'your-preferred-size', 'Your_Preferred_Size',
+          'YOUR_PREFERRED_SIZE', 'YourPreferredSize', 'yourpreferredsize', 'YOURPREFERREDSIZE'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'budget', 
+        aliases: [
+          'budget', 'budgetrange', 'budget_range', 'budget range', 'Budget', 'BUDGET',
+          'Budget Range', 'budget-range', 'Budget_Range', 'BUDGET_RANGE', 'BudgetRange',
+          'budgetRange', 'BUDGETRANGE', 'Budget (Above 4.8Cr)', 'Budget (Above 4.8Cr)',
+          'budget_above_4.8cr', 'budget-above-4.8cr', 'Budget_Above_4.8Cr', 'BUDGET_ABOVE_4.8CR',
+          'Budget Dropdown', 'budget_dropdown', 'budget-dropdown', 'Budget_Dropdown',
+          'BUDGET_DROPDOWN', 'BudgetDropdown', 'budgetdropdown', 'BUDGETDROPDOWN'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'purpose', 
+        aliases: [
+          'purpose', 'requirement', 'purposeofpurchase', 'purpose of purchase', 'purpose_of_purchase',
+          'Purpose', 'PURPOSE', 'Purpose of Purchase', 'purpose-of-purchase', 'Purpose_Of_Purchase',
+          'PURPOSE_OF_PURCHASE', 'PurposeOfPurchase', 'purposeOfPurchase', 'PURPOSEOFPURCHASE',
+          'Requirement', 'REQUIREMENT', 'requirement', 'requirements', 'Requirements', 'REQUIREMENTS'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'priority', 
+        aliases: [
+          'priority', 'prioritylevel', 'leadpriority', 'priority level', 'lead priority',
+          'Priority', 'PRIORITY', 'Priority Level', 'priority-level', 'Priority_Level',
+          'PRIORITY_LEVEL', 'PriorityLevel', 'priorityLevel', 'PRIORITYLEVEL',
+          'Top Priority ( Lifestyle / Connectivity / Amenities etc)', 'Top Priority',
+          'top_priority', 'top-priority', 'Top_Priority', 'TOP_PRIORITY', 'TopPriority',
+          'topPriority', 'TOPPRIORITY', 'Lifestyle / Connectivity / Amenities',
+          'lifestyle_connectivity_amenities', 'lifestyle-connectivity-amenities',
+          'Lifestyle_Connectivity_Amenities', 'LIFESTYLE_CONNECTIVITY_AMENITIES',
+          'LifestyleConnectivityAmenities', 'lifestyleConnectivityAmenities',
+          'LIFESTYLECONNECTIVITYAMENITIES', 'Top Priority ( Lifestyle/ Connectivity/ Amenities etc)'
+        ], 
+        defaultValue: '' 
+      },
+      { 
+        key: 'workLocation', 
+        aliases: [
+          'worklocation', 'work_location', 'officelocation', 'office_location', 'work location',
+          'office location', 'Work Location', 'Work_Location', 'WORK_LOCATION', 'WorkLocation',
+          'workLocation', 'WORKLOCATION', 'Office Location', 'office_location', 'Office_Location',
+          'OFFICE_LOCATION', 'OfficeLocation', 'officeLocation', 'OFFICELOCATION',
+          'Work Address', 'work_address', 'work-address', 'Work_Address', 'WORK_ADDRESS',
+          'WorkAddress', 'workAddress', 'WORKADDRESS'
+        ], 
+        defaultValue: '' 
+      }
       // { 
       //   key: 'created_time', 
       //   aliases: [
